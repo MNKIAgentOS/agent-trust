@@ -16,6 +16,7 @@ OpenID Federation, MCP and A2A. No new cryptography, no new protocol.
 | [`packages/sdk-ts`](packages/sdk-ts) | TypeScript SDK: agent identity (keys, signed requests), verify, delegate, attest, offline verification against an organization's JWKS. |
 | [`packages/cli`](packages/cli) | `agenttrust init · identity · verify · inspect · delegate · attest · scan · protect`. |
 | [`python/`](python) | Python SDK (zero dependencies; `cryptography` for Agent-Proof signing). |
+| [`go/`](go) | Go verifier (same vectors, no dependencies) and **`at-verify`**, the self-hosted verifier that serves `/v1/verify` from an exported organization snapshot. |
 | [`spec/`](spec) | **Agent Trust Profile v0.1** and the interoperability positioning. |
 | [`conformance/`](conformance) | Executable vectors — the cross-language contract (a Go core follows). |
 
@@ -23,6 +24,7 @@ OpenID Federation, MCP and A2A. No new cryptography, no new protocol.
 npm install
 npm test                       # verifier + sdk + cli suites, property tests, conformance vectors
 npm run agenttrust -- scan     # find the MCP servers and API keys agents can use on this machine
+cd go && go test ./... && go run ./cmd/at-verify -snapshot org.json   # self-hosted verifier
 ```
 
 Managed console, gateway hosting, trust graph and federation: [mnki.com](https://mnki.com).
