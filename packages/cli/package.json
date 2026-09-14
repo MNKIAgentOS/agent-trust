@@ -1,0 +1,16 @@
+{
+  "name": "@agent-trust/cli",
+  "version": "0.0.1",
+  "description": "agenttrust — init, identity, verify, inspect, delegate, attest, scan, protect. Run with `npm run agenttrust -- <command>` in the monorepo (tsx); packaged bin in the public repo.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./src/main.ts",
+  "dependencies": {
+    "@agent-trust/sdk": "*",
+    "@agent-trust/verifier": "*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MNKIHealth/agent-trust"
+  }
+}

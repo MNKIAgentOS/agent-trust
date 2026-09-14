@@ -1,0 +1,82 @@
+{
+  "id": "V10",
+  "title": "attenuated chain cannot exceed parent",
+  "now": "2026-09-14T12:00:00Z",
+  "world": {
+    "agent": {
+      "id": "agt_1",
+      "stable_id": "spiffe://acme/agent/procurement-7821",
+      "lifecycle": "active",
+      "risk_tier": "low",
+      "owner_principal_id": "prn_1",
+      "labels": {
+        "department": "Finance"
+      }
+    },
+    "credential": {
+      "id": "crd_1",
+      "kind": "jwt_svid",
+      "status": "active",
+      "not_after": "2027-03-15T00:00:00Z"
+    },
+    "principals": [
+      {
+        "id": "prn_1",
+        "display_name": "Maria Chen",
+        "kind": "user"
+      }
+    ],
+    "delegations": [
+      {
+        "id": "root",
+        "parent_id": null,
+        "subject_agent_id": "agt_parent",
+        "status": "active",
+        "capabilities": [
+          {
+            "action": "purchase.create",
+            "resource": "supplier:*",
+            "constraints": {
+              "max_value": 1000
+            }
+          }
+        ]
+      },
+      {
+        "id": "leaf",
+        "parent_id": "root",
+        "subject_agent_id": "agt_1",
+        "status": "active",
+        "capabilities": [
+          {
+            "action": "purchase.create",
+            "resource": "supplier:*",
+            "constraints": {
+              "max_value": 5000
+            }
+          }
+        ]
+      }
+    ],
+    "capabilities": [],
+    "revoked": [],
+    "attestations": [],
+    "policy": null
+  },
+  "request": {
+    "agent": "agt_1",
+    "action": "purchase.create",
+    "resource": "supplier:123",
+    "context": {
+      "region": "EU"
+    },
+    "amount": 2000,
+    "currency": "EUR"
+  },
+  "expect": {
+    "decision": "DENY",
+    "reasons_include": [
+      "capability_missing"
+    ]
+  }
+}

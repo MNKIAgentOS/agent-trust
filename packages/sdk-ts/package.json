@@ -1,0 +1,17 @@
+{
+  "name": "@agent-trust/sdk",
+  "version": "0.0.1",
+  "description": "Agent Trust SDK for TypeScript: agent identity (keys + signed requests), verify, delegate, attest, and offline verification of delegation credentials and attestations.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "sideEffects": false,
+  "dependencies": {
+    "@agent-trust/verifier": "*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MNKIHealth/agent-trust"
+  }
+}

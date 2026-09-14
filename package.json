@@ -1,0 +1,20 @@
+{
+  "name": "agent-trust",
+  "private": true,
+  "description": "Agent Trust — an open profile and reference implementation for proving what an autonomous AI agent is authorized to do.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "agenttrust": "tsx packages/cli/src/main.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "fast-check": "^3.23.2",
+    "tsx": "^4.23.13",
+    "typescript": "^5",
+    "vitest": "^2.1.9"
+  }
+}
