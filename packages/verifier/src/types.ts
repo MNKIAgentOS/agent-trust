@@ -1,6 +1,7 @@
 /** Machine-readable constraints on a capability. Unknown keys are carried through and treated conservatively. */
 export interface Constraints {
-  max_value?: number;
+  max_value?: number;          // per-request ceiling
+  max_total?: number;          // lifetime budget across allowed requests (tracked per delegation / agent + action + currency)
   currency?: string;
   region?: string[];
   [key: string]: unknown;

@@ -56,6 +56,8 @@ export class AgentTrustClient {
     register: (input: RegisterAgentInput) => this.call<{ ok: true; id: string; stableId: string }>("POST", "/v1/agents", input),
     get: (id: string) => this.call<Record<string, unknown> & { id: string; stableId: string; name: string; lifecycle: string; chain: { ids: string[]; valid: boolean; effective: CapSet } | null }>("GET", `/v1/agents/${encodeURIComponent(id)}`),
     rotate: (id: string, input: { kind?: string; issuer?: string; kid?: string; publicKeyJwk?: JsonWebKey; notAfter?: string }) => this.call<{ ok: true; credentialId: string; previousId: string | null }>("POST", `/v1/agents/${encodeURIComponent(id)}/rotate`, input),
+    attest: (id: string, input: { kind: "runtime" | "build" | "tee" | "self"; claims: Record<string, unknown>; expiresAt?: string; proof?: { format: "jwt_svid" | "jwt"; token: string } }) => this.call<{ ok: true; id: string; verified: boolean; issuer: string | null; reason?: string }>("POST", `/v1/agents/${encodeURIComponent(id)}/attestations`, { kind: input.kind, claims: input.claims, expires_at: input.expiresAt, proof: input.proof }),
+    agentCard: (id: string) => this.call<Record<string, unknown>>("GET", `/v1/agents/${encodeURIComponent(id)}/agent-card`),
     /** Register an agent and bind a freshly generated key: returns the identity to keep locally. */
     enrol: async (input: RegisterAgentInput, alg: ProofAlg = "ES256") => {
       const r = await this.agents.register(input); const id = await AgentIdentity.create(r.id, alg);
@@ -64,10 +66,11 @@ export class AgentTrustClient {
     },
   };
   /** Ask for a decision. With an identity the request is signed (Agent-Proof). */
-  async verify(input: VerifyInput, opts: { identity?: AgentIdentity } = {}): Promise<Decision> {
+  async verify(input: VerifyInput, opts: { identity?: AgentIdentity; /** An issuer-signed identity token (SPIRE JWT-SVID / IdP JWT) presented as Agent-Credential. */ credential?: string } = {}): Promise<Decision> {
     const url = `${this.base}/api/v1/verify`; const text = JSON.stringify(input);
     const headers: Record<string, string> = { authorization: `Bearer ${this.key}`, "content-type": "application/json" };
     if (opts.identity) headers["agent-proof"] = await opts.identity.signProof("POST", url, text);
+    if (opts.credential) headers["agent-credential"] = opts.credential;
     const res = await this.f(url, { method: "POST", headers, body: text });
     const j = (await res.json().catch(() => ({}))) as Record<string, unknown>;
     if (!res.ok) throw new AgentTrustError(res.status, typeof j.error === "string" ? j.error : `http_${res.status}`, j.detail ?? j);

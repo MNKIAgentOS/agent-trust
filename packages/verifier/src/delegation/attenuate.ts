@@ -28,8 +28,9 @@ export function constraintsTighter(parent: Constraints | undefined, child: Const
   for (const key of Object.keys(parent)) {
     const p = parent[key];
     if (p === undefined) continue;
-    if (key === "max_value") {
-      if (typeof c.max_value !== "number" || !(c.max_value <= (p as number))) return false;
+    if (key === "max_value" || key === "max_total") {
+      const cv = c[key];
+      if (typeof cv !== "number" || !(cv <= (p as number))) return false;
     } else if (key === "region") {
       const pr = new Set(p as string[]);
       const cr = c.region;
