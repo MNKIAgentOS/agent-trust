@@ -7,7 +7,7 @@
  *   agenttrust inspect <agent>
  *   agenttrust delegate --issuer principal:<id>|agent:<id> --to <agent> --cap "purchase.create=supplier:*;max_value=5000" [--parent <id>] [--expires 24h]
  *   agenttrust attest <decision_id>
- *   agenttrust scan [--register]
+ *   agenttrust scan [--register] [--watch [--interval 300]]
  *   agenttrust protect --mcp <integration_id>
  *   agenttrust conformance --level 1|2|3 [--dir <conformance dir>]
  *
@@ -99,7 +99,25 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
         console.log(`Attestation ${r.id} (expires ${r.expires_at})\n${r.token}`); return;
       }
       case "scan": {
-        const register = rest.includes("--register"); const r = scan();
+        const register = rest.includes("--register");
+        if (rest.includes("--watch")) {
+          // Continuous local discovery: re-scan on an interval, report and (with --register) register what is new.
+          const iv = rest.includes("--interval") ? Number(rest[rest.indexOf("--interval") + 1]) || 300 : 300;
+          const statePath = join(CONFIG_DIR, "scan-state.json"); mkdirSync(CONFIG_DIR, { recursive: true });
+          const known = new Set<string>(existsSync(statePath) ? (JSON.parse(readFileSync(statePath, "utf8")) as string[]) : []);
+          console.log(`Watching every ${iv}s (${known.size} known items). Ctrl-C to stop.`);
+          for (;;) {
+            const r = scan(); const items = [...r.mcpServers.map((s) => `mcp:${s.name}:${s.transport}:${s.url ?? s.command}`), ...r.workloads.map((w) => `${w.source}:${w.kind}:${w.name}`), ...r.credentials.map((k) => `env:${k.name}`)];
+            const fresh = items.filter((i) => !known.has(i));
+            if (fresh.length) {
+              console.log(`${new Date().toISOString()} — ${fresh.length} new: ${fresh.join(", ")}`);
+              if (register) { const c = load(); if (c) for (const s of r.mcpServers) if (s.transport === "http" && s.url && fresh.includes(`mcp:${s.name}:http:${s.url}`)) { const res = await fetch(`${c.baseUrl}/api/v1/integrations/mcp`, { method: "POST", headers: { authorization: `Bearer ${c.apiKey}`, "content-type": "application/json" }, body: JSON.stringify({ name: s.name, config: { url: s.url, transport: "streamable_http", action_prefix: "mcp:" } }) }); console.log(`  registered ${s.name}: ${res.status}`); } }
+              for (const i of fresh) known.add(i); writeFileSync(statePath, JSON.stringify([...known]));
+            }
+            await new Promise((r) => setTimeout(r, iv * 1000));
+          }
+        }
+        const r = scan();
         console.log(`Scanned ${r.scannedFiles.length} MCP client config${r.scannedFiles.length === 1 ? "" : "s"}${r.scannedFiles.length ? ":\n  " + r.scannedFiles.join("\n  ") : ""}`);
         console.log(`\nFound ${r.mcpServers.length} MCP server${r.mcpServers.length === 1 ? "" : "s"}:`);
         for (const s of r.mcpServers) console.log(`  ${s.name.padEnd(28)} ${s.transport === "http" ? s.url : `stdio: ${s.command} ${(s.args ?? []).join(" ")}`}   [${s.source}]`);

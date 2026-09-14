@@ -17,7 +17,7 @@ OpenID Federation, MCP and A2A. No new cryptography, no new protocol.
 | [`packages/cli`](packages/cli) | `agenttrust init · identity · verify · inspect · delegate · attest · scan · protect`. |
 | [`python/`](python) | Python SDK (zero dependencies; `cryptography` for Agent-Proof signing). |
 | [`go/`](go) | Go verifier (same vectors, no dependencies) and **`at-verify`**, the self-hosted verifier that serves `/v1/verify` from an exported organization snapshot. |
-| [`spec/`](spec) | **Agent Trust Profile v0.1** and the interoperability positioning. |
+| [`spec/`](spec) | **Agent Trust Profile v0.1**, the interoperability positioning, the Internet-Draft (`draft-mnki-agent-trust-profile-00`) and the standards plan. |
 | [`conformance/`](conformance) | Executable vectors for **certification levels 1–3** (`LEVELS.md`) — the cross-language contract; TypeScript and Go runners pass them all. |
 
 ```bash
