@@ -1,0 +1,54 @@
+{
+  "id": "L2-01",
+  "level": 2,
+  "title": "delegation chain root→child verifies offline",
+  "now": "2026-09-14T12:00:00.000Z",
+  "keys": {
+    "org_acme": {
+      "org-1": {
+        "kty": "EC",
+        "x": "WVDGEwz1Vm5o0UwGZ_LOG1dvFICPvEzzYRi1TZKsEhM",
+        "y": "_tuAH3ThoafcqbJPk2VHtNbJ3jyB7-bAXBg1Kkorq-k",
+        "crv": "P-256",
+        "kid": "org-1"
+      }
+    },
+    "org_globex": {
+      "peer-1": {
+        "crv": "Ed25519",
+        "x": "nu8WqitwyxAzvkwbcWI31N-u2pC4qvNUoJHyaU4JDcM",
+        "kty": "OKP",
+        "alg": "Ed25519",
+        "kid": "peer-1"
+      }
+    }
+  },
+  "case": {
+    "kind": "delegation_chain",
+    "tokens": [
+      "eyJhbGciOiJFUzI1NiIsInR5cCI6ImFnZW50LXRydXN0LWRlbGVnYXRpb24rand0Iiwia2lkIjoib3JnLTEifQ.eyJpc3MiOiJvcmdfYWNtZSIsInN1YiI6ImFndF9wYXJlbnQiLCJqdGkiOiJkbGdfcm9vdCIsImlhdCI6MTc4OTM4NzIwMCwiYXRwIjp7InYiOjEsImlzc3VlciI6eyJ0eXBlIjoicHJpbmNpcGFsIiwiaWQiOiJwcm5fYWxpY2UifSwiY2FwYWJpbGl0aWVzIjpbeyJhY3Rpb24iOiJwdXJjaGFzZS5jcmVhdGUiLCJyZXNvdXJjZSI6InN1cHBsaWVyOioiLCJjb25zdHJhaW50cyI6eyJtYXhfdmFsdWUiOjUwMDAsImN1cnJlbmN5IjoiRVVSIiwicmVnaW9uIjpbIkVVIl19fSx7ImFjdGlvbiI6InN1cHBsaWVyLnNlYXJjaCIsInJlc291cmNlIjoic3VwcGxpZXI6KiJ9XSwiZWZmZWN0aXZlIjpbeyJhY3Rpb24iOiJwdXJjaGFzZS5jcmVhdGUiLCJyZXNvdXJjZSI6InN1cHBsaWVyOioiLCJjb25zdHJhaW50cyI6eyJtYXhfdmFsdWUiOjUwMDAsImN1cnJlbmN5IjoiRVVSIiwicmVnaW9uIjpbIkVVIl19fSx7ImFjdGlvbiI6InN1cHBsaWVyLnNlYXJjaCIsInJlc291cmNlIjoic3VwcGxpZXI6KiJ9XSwicGFyZW50IjpudWxsLCJwYXJlbnRfaGFzaCI6bnVsbCwiZGVwdGgiOjAsInRhc2siOm51bGx9LCJleHAiOjE3OTg3NjE2MDB9.alASgX-htt7msvQH-1fNHOFLRe6lfWSug-C4IZeKW5kVnX_chblRz87yLlj-kt1IuRQ46ldLh-OUffaXSlTF7Q",
+      "eyJhbGciOiJFUzI1NiIsInR5cCI6ImFnZW50LXRydXN0LWRlbGVnYXRpb24rand0Iiwia2lkIjoib3JnLTEifQ.eyJpc3MiOiJvcmdfYWNtZSIsInN1YiI6ImFndF9jaGlsZCIsImp0aSI6ImRsZ19jaGlsZCIsImlhdCI6MTc4OTM4NzIwMCwiYXRwIjp7InYiOjEsImlzc3VlciI6eyJ0eXBlIjoiYWdlbnQiLCJpZCI6ImFndF9wYXJlbnQifSwiY2FwYWJpbGl0aWVzIjpbeyJhY3Rpb24iOiJwdXJjaGFzZS5jcmVhdGUiLCJyZXNvdXJjZSI6InN1cHBsaWVyOjEqIiwiY29uc3RyYWludHMiOnsibWF4X3ZhbHVlIjoxMjAwLCJjdXJyZW5jeSI6IkVVUiIsInJlZ2lvbiI6WyJFVSJdfX1dLCJlZmZlY3RpdmUiOlt7ImFjdGlvbiI6InB1cmNoYXNlLmNyZWF0ZSIsInJlc291cmNlIjoic3VwcGxpZXI6MSoiLCJjb25zdHJhaW50cyI6eyJtYXhfdmFsdWUiOjEyMDAsImN1cnJlbmN5IjoiRVVSIiwicmVnaW9uIjpbIkVVIl19fV0sInBhcmVudCI6ImRsZ19yb290IiwicGFyZW50X2hhc2giOiJfUVBnOFJ5VEdLb08zajVQSFMtcmx1c3BYWE5jcmlmODc3ZTEzSkZWV3JBIiwiZGVwdGgiOjEsInRhc2siOiJzdXBwbGllciByZXNlYXJjaCJ9fQ.tXUlRS5-32y95lSkIh9_P9ySiJM2uZAljXRRZpOh6CT_fNYhYFwAOFSPiS7NhCNe73--r4H8fWZZY6qnlMu0Jw"
+    ]
+  },
+  "expect": {
+    "ok": true,
+    "chain": [
+      "dlg_root",
+      "dlg_child"
+    ],
+    "subject": "agt_child",
+    "effective": [
+      {
+        "action": "purchase.create",
+        "resource": "supplier:1*",
+        "constraints": {
+          "max_value": 1200,
+          "currency": "EUR",
+          "region": [
+            "EU"
+          ]
+        }
+      }
+    ]
+  }
+}

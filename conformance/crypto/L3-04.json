@@ -1,0 +1,75 @@
+{
+  "id": "L3-04",
+  "level": 3,
+  "title": "unknown peer → agent unknown",
+  "now": "2026-09-14T12:00:00.000Z",
+  "keys": {
+    "org_acme": {
+      "org-1": {
+        "kty": "EC",
+        "x": "WVDGEwz1Vm5o0UwGZ_LOG1dvFICPvEzzYRi1TZKsEhM",
+        "y": "_tuAH3ThoafcqbJPk2VHtNbJ3jyB7-bAXBg1Kkorq-k",
+        "crv": "P-256",
+        "kid": "org-1"
+      }
+    },
+    "org_globex": {
+      "peer-1": {
+        "crv": "Ed25519",
+        "x": "nu8WqitwyxAzvkwbcWI31N-u2pC4qvNUoJHyaU4JDcM",
+        "kty": "OKP",
+        "alg": "Ed25519",
+        "kid": "peer-1"
+      }
+    }
+  },
+  "world": {
+    "agent": null,
+    "credential": null,
+    "principals": [],
+    "delegations": [],
+    "capabilities": [],
+    "revoked": [],
+    "attestations": [],
+    "policy": {
+      "version_id": "pv_a",
+      "hash": "ha",
+      "doc": {
+        "version": 1,
+        "rules": [
+          {
+            "id": "cap",
+            "match": {
+              "action": "purchase.create"
+            },
+            "conditions": [
+              {
+                "kind": "amount_gt",
+                "value": 3000
+              }
+            ],
+            "effect": "require_approval"
+          }
+        ]
+      }
+    },
+    "peers": []
+  },
+  "request": {
+    "agent": "spiffe://globex.example/agent/buyer-9",
+    "action": "purchase.create",
+    "resource": "supplier:44",
+    "amount": 900,
+    "currency": "EUR",
+    "context": {
+      "region": "EU"
+    },
+    "attestation": "eyJhbGciOiJFZERTQSIsInR5cCI6ImFnZW50LXRydXN0LWF0dGVzdGF0aW9uK2p3dCIsImtpZCI6InBlZXItMSJ9.eyJpc3MiOiJvcmdfZ2xvYmV4Iiwic3ViIjoic3BpZmZlOi8vZ2xvYmV4LmV4YW1wbGUvYWdlbnQvYnV5ZXItOSIsImp0aSI6ImFhdF9nMSIsImlhdCI6MTc4OTM4NzIwMCwiZXhwIjoxNzg5Mzg3ODAwLCJhdHAiOnsidiI6MSwicHJpbmNpcGFsIjoicHJuX2JvYiIsIm9yZ2FuaXphdGlvbiI6Im9yZ19nbG9iZXgiLCJhY3Rpb24iOiJwdXJjaGFzZS5jcmVhdGUiLCJyZXNvdXJjZSI6InN1cHBsaWVyOioiLCJkZWNpc2lvbiI6IkFMTE9XIiwiY2FwYWJpbGl0aWVzIjpbeyJhY3Rpb24iOiJwdXJjaGFzZS5jcmVhdGUiLCJyZXNvdXJjZSI6InN1cHBsaWVyOioiLCJjb25zdHJhaW50cyI6eyJtYXhfdmFsdWUiOjUwMDAsImN1cnJlbmN5IjoiRVVSIiwicmVnaW9uIjpbIkVVIl19fSx7ImFjdGlvbiI6InN1cHBsaWVyLnNlYXJjaCIsInJlc291cmNlIjoic3VwcGxpZXI6KiJ9XSwiZGVsZWdhdGlvbl9jaGFpbiI6WyJkbGdfZzEiXSwiaHVtYW5fYXBwcm92YWwiOm51bGwsImRlY2lzaW9uX2lkIjoiZGVjXzEiLCJyZXF1ZXN0X2hhc2giOiJhYmMiLCJwb2xpY3lfdmVyc2lvbiI6InB2XzEifX0.fTVbuGdj5yTaZVptbk0PNEoDiCkMnEiIzc1WOIjwJN6XY-xPBBthfDmN7qvPBeF4X1qbYpxaLQv3-sRIQ8cFDg"
+  },
+  "expect": {
+    "decision": "DENY",
+    "reasons_include": [
+      "agent_unknown"
+    ]
+  }
+}

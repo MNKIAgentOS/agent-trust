@@ -1,0 +1,46 @@
+{
+  "id": "L2-08",
+  "level": 2,
+  "title": "request proof for another URL",
+  "now": "2026-09-14T12:00:00.000Z",
+  "keys": {
+    "org_acme": {
+      "org-1": {
+        "kty": "EC",
+        "x": "WVDGEwz1Vm5o0UwGZ_LOG1dvFICPvEzzYRi1TZKsEhM",
+        "y": "_tuAH3ThoafcqbJPk2VHtNbJ3jyB7-bAXBg1Kkorq-k",
+        "crv": "P-256",
+        "kid": "org-1"
+      }
+    },
+    "org_globex": {
+      "peer-1": {
+        "crv": "Ed25519",
+        "x": "nu8WqitwyxAzvkwbcWI31N-u2pC4qvNUoJHyaU4JDcM",
+        "kty": "OKP",
+        "alg": "Ed25519",
+        "kid": "peer-1"
+      }
+    }
+  },
+  "case": {
+    "kind": "request_proof",
+    "proof": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImFnZW50LXRydXN0LXByb29mK2p3dCIsImtpZCI6ImtpZC0xIn0.eyJpc3MiOiJhZ3RfMSIsImh0bSI6IlBPU1QiLCJodHUiOiJodHRwczovL3ZlcmlmeS5leGFtcGxlL3YxL3ZlcmlmeSIsImlhdCI6MTc4OTM4NzIwMCwiZXhwIjoxNzg5Mzg3MjYwLCJqdGkiOiJqdGktZml4ZWQtMSIsInJoIjoiVGtzQTlfdjYza194Zk9mZlg5QkhVNVdlVWpLLUVPOXVoZ25ORVdBUnBqSSJ9.VCTHeSIthUIBpAxU5HKnHFm_o3rlDj81RG40ulxj6rVYSmXOtn5Od07pAfbUXxKB-ctbEF_m7uZuVdko_2aCJw",
+    "agent_keys": {
+      "kid-1": {
+        "kty": "EC",
+        "x": "TsK_RJCMaP7NdtB8qGMx3OC5gtxwBtDWzutvp7DvDFg",
+        "y": "IvAtAatUtikFSL6gFYkRdQWEEYDI6_bf9PwAtmAIsq8",
+        "crv": "P-256",
+        "kid": "kid-1"
+      }
+    },
+    "htm": "POST",
+    "htu": "https://evil.example/v1/verify",
+    "body_hash": "TksA9_v63k_xfOffX9BHU5WeUjK-EO9uhgnNEWARpjI"
+  },
+  "expect": {
+    "ok": false,
+    "reason": "htu"
+  }
+}

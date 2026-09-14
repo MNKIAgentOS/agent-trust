@@ -9,6 +9,7 @@
  *   agenttrust attest <decision_id>
  *   agenttrust scan [--register]
  *   agenttrust protect --mcp <integration_id>
+ *   agenttrust conformance --level 1|2|3 [--dir <conformance dir>]
  *
  * Config + identities live in ~/.agenttrust/config.json (private keys included — chmod 600).
  */
@@ -18,6 +19,7 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { AgentTrustClient, AgentIdentity, AgentTrustError, type ExportedIdentity, type CapSet } from "@agent-trust/sdk";
 import { scan } from "./scan";
+import { findConformanceDir, runConformance, formatReport } from "./conformance";
 
 interface Config { baseUrl: string; apiKey: string; identities: Record<string, ExportedIdentity> }
 const CONFIG_DIR = join(process.env.AGENTTRUST_HOME ?? homedir(), ".agenttrust"); const CONFIG = join(CONFIG_DIR, "config.json");
@@ -118,8 +120,14 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
         const url = `${c.baseUrl}/api/gateway/mcp/${values.mcp}`;
         console.log(`Point your MCP client at the gateway instead of the server:\n${JSON.stringify({ mcpServers: { protected: { url, headers: { Authorization: "Bearer <agent trust key, scope verify>", "Agent-Id": values.agent ?? "<agent id>" } } } }, null, 2)}\nEvery tools/call is verified; denials return JSON-RPC -32003, escalations -32001. Decisions land in Audit & Provenance.`); return;
       }
+      case "conformance": {
+        const { values } = parseArgs({ args: rest, options: { level: { type: "string", default: "3" }, dir: { type: "string" } } });
+        const dir = values.dir ?? findConformanceDir(); if (!dir) throw new Error("conformance directory not found — pass --dir <path to conformance/>");
+        const level = Math.min(3, Math.max(1, Number(values.level) || 3));
+        const { text, ok } = formatReport(await runConformance(dir, level), level); console.log(text); process.exitCode = ok ? 0 : 1; return;
+      }
       default:
-        console.log("agenttrust <init|identity|verify|inspect|delegate|attest|scan|protect> — see packages/cli/src/main.ts for usage"); process.exitCode = cmd ? 2 : 0;
+        console.log("agenttrust <init|identity|verify|inspect|delegate|attest|scan|protect|conformance> — see packages/cli/src/main.ts for usage"); process.exitCode = cmd ? 2 : 0;
     }
   } catch (e) {
     if (e instanceof AgentTrustError) console.error(`API error ${e.status} ${e.code}${e.detail ? ` — ${typeof e.detail === "string" ? e.detail : JSON.stringify(e.detail)}` : ""}`);
