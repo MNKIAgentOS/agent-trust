@@ -15,6 +15,7 @@ OpenID Federation, MCP and A2A. No new cryptography, no new protocol.
 | [`packages/verifier`](packages/verifier) | The pure core: parsing, delegation chain + attenuation, policy engine, request proof, delegation credentials, attestations, the 12-step evidence pipeline. Deterministic, dependency-free, WebCrypto only. |
 | [`packages/sdk-ts`](packages/sdk-ts) | TypeScript SDK: agent identity (keys, signed requests), verify, delegate, attest, offline verification against an organization's JWKS. |
 | [`packages/cli`](packages/cli) | `agenttrust init · identity · verify · inspect · delegate · attest · scan · protect`. |
+| [`python/`](python) | Python SDK (zero dependencies; `cryptography` for Agent-Proof signing). |
 | [`spec/`](spec) | **Agent Trust Profile v0.1** and the interoperability positioning. |
 | [`conformance/`](conformance) | Executable vectors — the cross-language contract (a Go core follows). |
 

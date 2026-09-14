@@ -7,10 +7,41 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { homedir, platform } from "node:os";
+import { execFileSync } from "node:child_process";
 
 export interface McpServerFinding { source: string; name: string; transport: "http" | "stdio"; url?: string; command?: string; args?: string[] }
 export interface CredentialFinding { source: "env"; name: string; provider: string; masked: string }
-export interface ScanResult { mcpServers: McpServerFinding[]; credentials: CredentialFinding[]; scannedFiles: string[] }
+export interface WorkloadFinding { source: "kubernetes" | "aws" | "github"; name: string; kind: string; detail: string }
+export interface ScanResult { mcpServers: McpServerFinding[]; credentials: CredentialFinding[]; workloads: WorkloadFinding[]; scannedFiles: string[]; toolsTried: string[] }
+/** Run a local CLI and return stdout, or null when the tool is missing / not authenticated. Injectable for tests. */
+export type Runner = (cmd: string, args: string[]) => string | null;
+export const defaultRunner: Runner = (cmd, args) => { try { return execFileSync(cmd, args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 15000 }); } catch { return null; } };
+
+/** Kubernetes: service accounts and deployments that look like agents (name/label heuristics) — the identities workloads actually run as. */
+export function discoverKubernetes(run: Runner): WorkloadFinding[] {
+  const out: WorkloadFinding[] = [];
+  const sa = run("kubectl", ["get", "serviceaccounts", "-A", "-o", "json"]);
+  if (sa) { try { for (const it of (JSON.parse(sa).items ?? []) as { metadata: { name: string; namespace: string; labels?: Record<string, string> } }[]) { if (it.metadata.name === "default" || it.metadata.namespace.startsWith("kube-")) continue; out.push({ source: "kubernetes", name: `${it.metadata.namespace}/${it.metadata.name}`, kind: "serviceaccount", detail: Object.entries(it.metadata.labels ?? {}).map(([k, v]) => `${k}=${v}`).join(" ") || "no labels" }); } } catch { /* ignore */ } }
+  const dep = run("kubectl", ["get", "deployments", "-A", "-o", "json"]);
+  if (dep) { try { for (const it of (JSON.parse(dep).items ?? []) as { metadata: { name: string; namespace: string }; spec?: { template?: { spec?: { serviceAccountName?: string; containers?: { image?: string }[] } } } }[]) { const n = `${it.metadata.namespace}/${it.metadata.name}`; if (!/agent|bot|assistant|copilot|llm|mcp|orchestrat|worker/i.test(n)) continue; const t = it.spec?.template?.spec; out.push({ source: "kubernetes", name: n, kind: "deployment", detail: `sa=${t?.serviceAccountName ?? "default"} image=${t?.containers?.[0]?.image ?? "?"}` }); } } catch { /* ignore */ } }
+  return out;
+}
+/** AWS: IAM roles and Bedrock agents whose names suggest autonomous workloads. */
+export function discoverAws(run: Runner): WorkloadFinding[] {
+  const out: WorkloadFinding[] = [];
+  const roles = run("aws", ["iam", "list-roles", "--output", "json"]);
+  if (roles) { try { for (const r of (JSON.parse(roles).Roles ?? []) as { RoleName: string; Arn: string; Description?: string }[]) { if (!/agent|bot|bedrock|lambda|assistant|llm|mcp|orchestrat/i.test(r.RoleName)) continue; out.push({ source: "aws", name: r.RoleName, kind: "iam-role", detail: r.Arn }); } } catch { /* ignore */ } }
+  const agents = run("aws", ["bedrock-agent", "list-agents", "--output", "json"]);
+  if (agents) { try { for (const a of (JSON.parse(agents).agentSummaries ?? []) as { agentId: string; agentName: string; agentStatus?: string }[]) out.push({ source: "aws", name: a.agentName, kind: "bedrock-agent", detail: `${a.agentId} ${a.agentStatus ?? ""}`.trim() }); } catch { /* ignore */ } }
+  return out;
+}
+/** GitHub: Apps installed for the authenticated user (each is a machine identity with repository authority). */
+export function discoverGitHub(run: Runner): WorkloadFinding[] {
+  const out: WorkloadFinding[] = [];
+  const inst = run("gh", ["api", "/user/installations", "--paginate"]);
+  if (inst) { try { for (const i of (JSON.parse(inst).installations ?? []) as { id: number; app_slug?: string; account?: { login?: string }; permissions?: Record<string, string>; repository_selection?: string }[]) out.push({ source: "github", name: i.app_slug ?? String(i.id), kind: "github-app", detail: `on ${i.account?.login ?? "?"} · ${i.repository_selection ?? "?"} repos · ${Object.entries(i.permissions ?? {}).map(([k, v]) => `${k}:${v}`).join(" ")}` }); } catch { /* ignore */ } }
+  return out;
+}
 
 const KEY_PROVIDERS: [RegExp, string][] = [[/^OPENAI_API_KEY$/, "OpenAI"], [/^ANTHROPIC_API_KEY$/, "Anthropic"], [/^GOOGLE_API_KEY$|^GEMINI_API_KEY$/, "Google AI"], [/^GITHUB_TOKEN$|^GH_TOKEN$/, "GitHub"], [/^AWS_ACCESS_KEY_ID$/, "AWS"], [/^AZURE_OPENAI_API_KEY$/, "Azure OpenAI"], [/^SLACK_BOT_TOKEN$/, "Slack"], [/^STRIPE_SECRET_KEY$/, "Stripe"], [/^HF_TOKEN$|^HUGGINGFACE_TOKEN$/, "Hugging Face"], [/^MISTRAL_API_KEY$/, "Mistral"], [/^OPENROUTER_API_KEY$/, "OpenRouter"]];
 
@@ -52,8 +83,10 @@ export function scanEnvironment(env: NodeJS.ProcessEnv = process.env): Credentia
   return out.sort((a, b) => a.provider.localeCompare(b.provider));
 }
 
-export function scan(opts: { home?: string; cwd?: string; env?: NodeJS.ProcessEnv } = {}): ScanResult {
+export function scan(opts: { home?: string; cwd?: string; env?: NodeJS.ProcessEnv; run?: Runner; tools?: boolean } = {}): ScanResult {
   const files = mcpConfigCandidates(opts.home, opts.cwd); const scannedFiles: string[] = []; const mcpServers: McpServerFinding[] = [];
   for (const f of files) { if (!existsSync(f.path)) continue; scannedFiles.push(f.path); try { mcpServers.push(...parseMcpConfig(f.source, readFileSync(f.path, "utf8"))); } catch { /* unreadable */ } }
-  return { mcpServers, credentials: scanEnvironment(opts.env), scannedFiles };
+  const run = opts.run ?? defaultRunner; const workloads: WorkloadFinding[] = []; const toolsTried: string[] = [];
+  if (opts.tools !== false) { toolsTried.push("kubectl", "aws", "gh"); workloads.push(...discoverKubernetes(run), ...discoverAws(run), ...discoverGitHub(run)); }
+  return { mcpServers, credentials: scanEnvironment(opts.env), workloads, scannedFiles, toolsTried };
 }

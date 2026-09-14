@@ -103,6 +103,8 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
         for (const s of r.mcpServers) console.log(`  ${s.name.padEnd(28)} ${s.transport === "http" ? s.url : `stdio: ${s.command} ${(s.args ?? []).join(" ")}`}   [${s.source}]`);
         console.log(`\n${r.credentials.length} credential${r.credentials.length === 1 ? "" : "s"} an agent could use (environment):`);
         for (const k of r.credentials) console.log(`  ${k.provider.padEnd(14)} ${k.name}  ${k.masked}`);
+        console.log(`\n${r.workloads.length} workload identit${r.workloads.length === 1 ? "y" : "ies"} via ${r.toolsTried.join(" / ")} (only tools that are installed and signed in answer):`);
+        for (const w of r.workloads) console.log(`  ${w.source.padEnd(11)} ${w.kind.padEnd(15)} ${w.name}  ${w.detail}`);
         if (register) {
           const c = need(); let n = 0;
           for (const s of r.mcpServers) if (s.transport === "http" && s.url) { const res = await fetch(`${c.baseUrl}/api/v1/integrations/mcp`, { method: "POST", headers: { authorization: `Bearer ${c.apiKey}`, "content-type": "application/json" }, body: JSON.stringify({ name: s.name, config: { url: s.url, transport: "streamable_http", action_prefix: "mcp:" } }) }); if (res.ok) n++; }

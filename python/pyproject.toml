@@ -1,0 +1,12 @@
+[project]
+name = "agent-trust"
+version = "0.0.1"
+description = "Agent Trust SDK for Python: verify, attest, delegate, and sign requests (Agent-Proof) for autonomous AI agents."
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+dependencies = []
+[project.optional-dependencies]
+signing = ["cryptography>=42"]
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"

@@ -108,7 +108,7 @@ export async function verifyDelegationChain(tokens: string[], resolveKey: KeyRes
 }
 
 // ---------- Agent Authorization Attestation ----------
-export interface AttestationClaims { v: 1; principal: string | null; organization: string; action: string; resource: string | null; decision: "ALLOW" | "REQUIRE_APPROVAL"; capabilities: CapSet; delegation_chain: string[]; human_approval: { required: boolean; approved: boolean; approver: string | null; approval_id: string | null } | null; decision_id: string; request_hash: string | null; policy_version: string | null }
+export interface AttestationClaims { v: 1; principal: string | null; organization: string; action: string; resource: string | null; decision: "ALLOW" | "REQUIRE_APPROVAL"; capabilities: CapSet; delegation_chain: string[]; human_approval: { required: boolean; approved: boolean; approver: string | null; approval_id: string | null; proof_hash?: string } | null; decision_id: string; request_hash: string | null; policy_version: string | null }
 export interface AttestationJwt { iss: string; sub: string; jti: string; iat: number; exp: number; aud?: string; atp: AttestationClaims }
 export interface IssueAttestationInput { privateKey: CryptoKey; alg: ProofAlg; kid: string; orgId: string; attestationId: string; agentId: string; audience?: string | null; ttlSeconds?: number; now?: Date; claims: AttestationClaims }
 
