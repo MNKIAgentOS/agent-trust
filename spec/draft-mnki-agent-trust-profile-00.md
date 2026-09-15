@@ -8,9 +8,12 @@ ipr: trust200902
 area: Security
 keyword: [agent, delegation, authorization, attestation, provenance, WIMSE, AuthZEN]
 author:
-  - name: MNKI (Petso BV)
-    organization: MNKI
+  # Datatracker requires a named person as author/editor: put your name here before submitting.
+  - name: Editor (MNKI)
+    role: editor
+    organization: MNKI (Petso BV)
     email: hello@mnki.com
+    uri: https://mnki.com
 normative:
   RFC2119:
   RFC7515:
@@ -79,7 +82,7 @@ An agent identifier MUST be URI-safe, stable, non-secret and unique within its o
 {{SPIFFE}}, DIDs, OIDC subjects and organization-specific URIs are acceptable. Lifecycle states are
 `pending`, `active`, `suspended`, `revoked`, `retired`; only `active` agents may be authorized.
 Credentials bind a public JWK to the agent (`kid`, `not_before`, `not_after`, `issuer`, `status`).
-Issuer-signed identity tokens (JWT-SVIDs, IdP JWTs) MAY be presented in the `Agent-Credential` header
+Issuer-signed identity tokens ({{RFC7519}} JWT-SVIDs, IdP JWTs) MAY be presented in the `Agent-Credential` header
 and validated against configured trust anchors (OIDC issuers via discovery JWKS; SPIFFE trust domains via
 their bundle endpoint); a valid presented token MAY stand in for a registered key.
 
