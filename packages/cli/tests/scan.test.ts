@@ -29,12 +29,12 @@ describe("agenttrust scan — workload identities via local CLIs (stubbed)", () 
       if (key.startsWith("kubectl get deployments")) return JSON.stringify({ items: [{ metadata: { name: "procurement-agent", namespace: "prod" }, spec: { template: { spec: { serviceAccountName: "procurement-agent", containers: [{ image: "acme/procurement:1.8.2" }] } } } }, { metadata: { name: "web", namespace: "prod" } }] });
       if (key.startsWith("aws iam list-roles")) return JSON.stringify({ Roles: [{ RoleName: "bedrock-agent-exec", Arn: "arn:aws:iam::1:role/bedrock-agent-exec" }, { RoleName: "OrganizationAccountAccessRole", Arn: "arn:x" }] });
       if (key.startsWith("aws bedrock-agent list-agents")) return JSON.stringify({ agentSummaries: [{ agentId: "AG1", agentName: "support-agent", agentStatus: "PREPARED" }] });
-      if (key.startsWith("gh api /user/installations")) return JSON.stringify({ installations: [{ id: 7, app_slug: "deploy-bot", account: { login: "MNKIHealth" }, repository_selection: "selected", permissions: { contents: "write" } }] });
+      if (key.startsWith("gh api /user/installations")) return JSON.stringify({ installations: [{ id: 7, app_slug: "deploy-bot", account: { login: "MNKIAgentOS" }, repository_selection: "selected", permissions: { contents: "write" } }] });
       return null;
     };
     expect(discoverKubernetes(run).map((w) => `${w.kind}:${w.name}`)).toEqual(["serviceaccount:prod/procurement-agent", "deployment:prod/procurement-agent"]);
     expect(discoverAws(run).map((w) => `${w.kind}:${w.name}`)).toEqual(["iam-role:bedrock-agent-exec", "bedrock-agent:support-agent"]);
-    expect(discoverGitHub(run)[0]).toMatchObject({ kind: "github-app", name: "deploy-bot", detail: "on MNKIHealth · selected repos · contents:write" });
+    expect(discoverGitHub(run)[0]).toMatchObject({ kind: "github-app", name: "deploy-bot", detail: "on MNKIAgentOS · selected repos · contents:write" });
     expect(discoverKubernetes(() => null)).toEqual([]);
     const r = scan({ home: "/nonexistent-home", cwd: "/nonexistent-cwd", env: {}, run });
     expect(r.workloads).toHaveLength(5); expect(r.toolsTried).toEqual(["kubectl", "aws", "gh"]);

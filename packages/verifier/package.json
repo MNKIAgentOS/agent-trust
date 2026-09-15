@@ -1,7 +1,7 @@
 {
   "name": "@agent-trust/verifier",
   "version": "0.0.1",
-  "description": "Pure verification core for Agent Trust: request parsing, delegation chain resolution, authority attenuation. No runtime dependencies. Destined for the open-source MNKIHealth/agent-trust repo.",
+  "description": "Pure verification core for Agent Trust: request parsing, delegation chain resolution, authority attenuation. No runtime dependencies. Destined for the open-source MNKIAgentOS/agent-trust repo.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./src/index.ts",
@@ -9,6 +9,6 @@
   "sideEffects": false,
   "repository": {
     "type": "git",
-    "url": "https://github.com/MNKIHealth/agent-trust"
+    "url": "https://github.com/MNKIAgentOS/agent-trust"
   }
 }

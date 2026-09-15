@@ -48,4 +48,4 @@ src/pipeline.ts              verify(req, deps, { now }) · VerifierDeps
 
 Boundary: this package must never import `next`, `@opennextjs/*`, `@/*` or
 `@cloudflare/*` (enforced by ESLint). It is extracted to the public
-`MNKIHealth/agent-trust` repository once the protocol profile freezes.
+`MNKIAgentOS/agent-trust` repository once the protocol profile freezes.

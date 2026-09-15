@@ -1,3 +1,3 @@
-module github.com/MNKIHealth/agent-trust/go
+module github.com/MNKIAgentOS/agent-trust/go
 
 go 1.22

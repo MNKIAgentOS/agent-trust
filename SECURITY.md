@@ -5,7 +5,7 @@ and credit reporters who wish it. Please do not test against production systems 
 environment is available to design partners on request.
 
 Scope: the Agent Trust console and API (`mnki.com`), the open-source verifier, SDKs, CLI and conformance
-suite (`MNKIHealth/agent-trust`). Out of scope: denial of service, social engineering, findings on
+suite (`MNKIAgentOS/agent-trust`). Out of scope: denial of service, social engineering, findings on
 third-party services.
 
 Cryptography: the profile defines no new primitives — JWS with ES256/EdDSA, SHA-256, JCS canonicalization,

@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/MNKIHealth/agent-trust/go/verifier"
+	"github.com/MNKIAgentOS/agent-trust/go/verifier"
 )
 
 type server struct {
