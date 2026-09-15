@@ -6,6 +6,7 @@
   "type": "module",
   "workspaces": ["packages/*"],
   "scripts": {
+    "build": "npm run build -w packages/verifier && npm run build -w packages/sdk-ts && npm run build -w packages/cli && node scripts/fix-esm.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "agenttrust": "tsx packages/cli/src/main.ts"

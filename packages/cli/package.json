@@ -1,16 +1,57 @@
 {
-  "name": "@agent-trust/cli",
-  "version": "0.0.1",
+  "name": "@mnki/cli",
+  "version": "0.1.0",
   "description": "agenttrust — init, identity, verify, inspect, delegate, attest, scan, protect. Run with `npm run agenttrust -- <command>` in the monorepo (tsx); packaged bin in the public repo.",
   "license": "Apache-2.0",
   "type": "module",
-  "main": "./src/main.ts",
+  "main": "./dist/main.js",
   "dependencies": {
-    "@agent-trust/sdk": "*",
-    "@agent-trust/verifier": "*"
+    "@mnki/sdk": "^0.1.0",
+    "@mnki/verifier": "^0.1.0"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/MNKIAgentOS/agent-trust"
+    "url": "https://github.com/MNKIAgentOS/agent-trust",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://mnki.com",
+  "bugs": "https://github.com/MNKIAgentOS/agent-trust/issues",
+  "keywords": [
+    "ai-agents",
+    "agent-security",
+    "authorization",
+    "delegation",
+    "spiffe",
+    "wimse",
+    "authzen",
+    "mcp",
+    "a2a",
+    "jws",
+    "dpop"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "types": "./dist/main.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/main.d.ts",
+      "default": "./dist/main.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "bin": {
+    "agenttrust": "./dist/main.js"
   }
 }

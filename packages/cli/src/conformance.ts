@@ -5,7 +5,7 @@
  */
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
-import { verify, verifyDelegationChain, verifyRequestProof, verifyAttestation, parseVerifyRequest, type VerifierDeps } from "@agent-trust/verifier";
+import { verify, verifyDelegationChain, verifyRequestProof, verifyAttestation, parseVerifyRequest, type VerifierDeps } from "@mnki/verifier";
 
 export interface ConformanceReport { level: number; passed: number; failed: number; failures: { id: string; title: string; detail: string }[] }
 

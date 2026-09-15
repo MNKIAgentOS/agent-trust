@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * agenttrust — the five-minute developer motion.
  *
@@ -17,7 +18,7 @@ import { parseArgs } from "node:util";
 import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import { AgentTrustClient, AgentIdentity, AgentTrustError, type ExportedIdentity, type CapSet } from "@agent-trust/sdk";
+import { AgentTrustClient, AgentIdentity, AgentTrustError, type ExportedIdentity, type CapSet } from "@mnki/sdk";
 import { scan } from "./scan";
 import { findConformanceDir, runConformance, formatReport } from "./conformance";
 
@@ -154,4 +155,4 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   }
 }
 
-if (process.argv[1] && /main\.ts$|agenttrust$/.test(process.argv[1])) void main();
+if (process.argv[1] && /main\.(ts|js)$|agenttrust$/.test(process.argv[1])) void main();

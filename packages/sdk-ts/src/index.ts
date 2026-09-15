@@ -6,9 +6,9 @@
  *
  * Runs anywhere WebCrypto + fetch exist (Node ≥ 20, Workers, browsers).
  */
-import { generateAgentKey, signRequestProof, verifyDelegationChain, verifyAttestation, type ProofAlg, type CapSet, type KeyResolver, type CredentialChainResult, type AttestationResult } from "@agent-trust/verifier";
-export { generateAgentKey, signRequestProof, verifyDelegationChain, verifyAttestation, decodeJwt, bodyHash } from "@agent-trust/verifier";
-export type { ProofAlg, CapSet } from "@agent-trust/verifier";
+import { generateAgentKey, signRequestProof, verifyDelegationChain, verifyAttestation, type ProofAlg, type CapSet, type KeyResolver, type CredentialChainResult, type AttestationResult } from "@mnki/verifier";
+export { generateAgentKey, signRequestProof, verifyDelegationChain, verifyAttestation, decodeJwt, bodyHash } from "@mnki/verifier";
+export type { ProofAlg, CapSet } from "@mnki/verifier";
 
 export interface ClientOptions { baseUrl: string; apiKey: string; fetch?: typeof fetch }
 export interface Evidence { step: string; status: "pass" | "warn" | "fail" | "skipped"; title: string; detail?: string; refs?: string[] }

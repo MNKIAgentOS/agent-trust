@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { AgentTrustClient, AgentIdentity, AgentTrustError } from "../src/index";
-import { verifyRequestProof, bodyHash } from "@agent-trust/verifier";
+import { verifyRequestProof, bodyHash } from "@mnki/verifier";
 
 describe("Agent Trust SDK", () => {
   it("enrols an agent (register + key + rotate), signs verify requests, and surfaces API errors", async () => {

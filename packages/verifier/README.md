@@ -1,11 +1,11 @@
-# @agent-trust/verifier
+# @mnki/verifier
 
 The pure core of Agent Trust, Apache-2.0. Everything here is a deterministic
 function of its inputs — no Cloudflare bindings, no framework, no network,
 no clock other than the one you pass in.
 
 ```ts
-import { verify, parseVerifyRequest } from "@agent-trust/verifier";
+import { verify, parseVerifyRequest } from "@mnki/verifier";
 
 const parsed = parseVerifyRequest(untrustedJson);          // never throws
 if (parsed.ok) {
