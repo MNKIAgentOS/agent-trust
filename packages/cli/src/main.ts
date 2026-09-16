@@ -21,7 +21,8 @@
  * Config + identities live in ~/.mnki/config.json (private keys included — chmod 600); see ./config.ts.
  */
 import { parseArgs } from "node:util";
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import { AgentTrustClient, AgentIdentity, AgentTrustError, type CapSet } from "mnki-sdk";
 import { scan } from "./scan";
@@ -256,4 +257,15 @@ When you want a real console: mnki init --url https://mnki.com --key at_…`); r
   }
 }
 
-if (process.argv[1] && /main\.(ts|js)$|agenttrust$|mnki$/.test(process.argv[1])) void main();
+/**
+ * Is this module the process entry point? Bin names differ from the file name (`mnki`, `mnki-cli`,
+ * `agenttrust`, `mnki-mcp` all point at dist/main.js), and npx invokes the bin named after the package — so
+ * resolve the symlink and compare paths, falling back to the known names when realpath is unavailable.
+ */
+export function isEntrypoint(argv1: string | undefined, moduleUrl: string): boolean {
+  if (!argv1) return false;
+  try { return realpathSync(argv1) === fileURLToPath(moduleUrl); } catch { /* not a real path (bundled, virtual fs) */ }
+  return /(^|[\\/])(main\.(ts|js)|mnki|mnki-cli|mnki-mcp|agenttrust)$/.test(argv1);
+}
+
+if (isEntrypoint(process.argv[1], import.meta.url)) void main();

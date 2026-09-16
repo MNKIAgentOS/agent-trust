@@ -1,6 +1,6 @@
 [project]
 name = "mnki"
-version = "0.1.0"
+version = "0.1.1"
 description = "mnki — the Agent Trust SDK for Python: give an AI agent an identity, verify its authority with evidence, delegate, attest, sign requests (Agent-Proof)."
 readme = "README.md"
 license = { text = "Apache-2.0" }

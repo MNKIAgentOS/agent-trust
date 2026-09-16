@@ -1,6 +1,6 @@
 {
   "name": "mnki-verifier",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Pure verification core for Agent Trust: request parsing, delegation chain resolution, authority attenuation. No runtime dependencies. Destined for the open-source MNKIAgentOS/agent-trust repo.",
   "license": "Apache-2.0",
   "type": "module",

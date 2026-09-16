@@ -3,7 +3,8 @@
  * mnki-mcp — stdio in front of the MCP client, a stdio command or a Streamable HTTP server behind it.
  * Every tools/call is verified by Agent Trust; see ./config.ts for the flags and `mnki protect` to install it.
  */
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { AgentIdentity } from "mnki-sdk";
 import { parseArgs, USAGE } from "./config";
 import { createProxy, splitFrames } from "./proxy";
@@ -31,4 +32,15 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   process.stdin.on("end", () => { void proxy.close(250).then(() => process.exit(0)); });
   process.on("SIGTERM", () => { void proxy.close().then(() => process.exit(0)); });
 }
-if (process.argv[1] && /main\.(ts|js)$|mnki-mcp$/.test(process.argv[1])) void main().catch((e) => { console.error(e instanceof Error ? e.message : String(e)); process.exit(1); });
+/**
+ * Is this module the process entry point? Bin names differ from the file name (`mnki`, `mnki-cli`,
+ * `agenttrust`, `mnki-mcp` all point at dist/main.js), and npx invokes the bin named after the package — so
+ * resolve the symlink and compare paths, falling back to the known names when realpath is unavailable.
+ */
+export function isEntrypoint(argv1: string | undefined, moduleUrl: string): boolean {
+  if (!argv1) return false;
+  try { return realpathSync(argv1) === fileURLToPath(moduleUrl); } catch { /* not a real path (bundled, virtual fs) */ }
+  return /(^|[\\/])(main\.(ts|js)|mnki|mnki-cli|mnki-mcp|agenttrust)$/.test(argv1);
+}
+
+if (isEntrypoint(process.argv[1], import.meta.url)) void main().catch((e) => { console.error(e instanceof Error ? e.message : String(e)); process.exit(1); });
