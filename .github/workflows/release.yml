@@ -24,7 +24,7 @@ jobs:
       # No `registry-url`: setup-node would write an .npmrc pinned to NODE_AUTH_TOKEN, which is empty on the
       # OIDC path and stops trusted publishing from authenticating. npmjs.org is the default registry anyway.
       - uses: actions/setup-node@v4
-        with: { node-version: "22.14", cache: npm }
+        with: { node-version: "22", cache: npm }
       # Trusted publishing needs npm >= 11.5.1; the npm bundled with Node 22 is older.
       - run: npm install -g npm@latest && npm --version
       - run: npm ci
@@ -41,7 +41,9 @@ jobs:
           fi
           for p in packages/verifier packages/sdk-ts packages/mcp packages/cli; do
             [ -d "$p" ] || continue
-            name=$(node -p "require('./$p/package.json').name")
+            name=$(node -p "require('./$p/package.json').name"); version=$(node -p "require('./$p/package.json').version")
+            # Re-runs after a partial release must not fail on what is already out there.
+            if npm view "$name@$version" version >/dev/null 2>&1; then echo "$name@$version is already on the registry — skipping"; continue; fi
             (cd "$p" && npm publish --access public) || { echo "::error::publish failed for $name — configure its Trusted Publisher on npmjs.com (repo MNKIAgentOS/agent-trust, workflow release.yml, environment release), or publish the first version manually once"; exit 1; }
           done
       - name: Checksums + signatures
@@ -61,7 +63,7 @@ jobs:
         with: { python-version: "3.12" }
       - run: cd python && python -m pip install --upgrade build && python -m unittest discover -s tests && python -m build
       - uses: pypa/gh-action-pypi-publish@release/v1
-        with: { packages-dir: python/dist, attestations: true }
+        with: { packages-dir: python/dist, attestations: true, skip-existing: true }
   github-release:
     needs: [npm, pypi]
     runs-on: ubuntu-latest
