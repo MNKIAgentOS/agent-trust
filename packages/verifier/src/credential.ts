@@ -12,6 +12,13 @@
  *   Agent Authorization Attestation  typ "agent-trust-attestation+jwt"
  *     "what this agent may do right now, and who can prove it" — short-lived,
  *     issued from a decision, verifiable by any relying party holding the JWKS.
+ *
+ *   Approval object  typ "agent-trust-approval+jwt"
+ *     a human's decision on a REQUIRE_APPROVAL outcome, bound to the decision's
+ *     request hash. Signed either by an approver's registered device key
+ *     (kid = device id; the control plane resolves it) or countersigned by the
+ *     organization key (kid in the JWKS) with atp.device_proof_hash committing
+ *     to the device-signed object.
  */
 import { b64url, b64urlDecode, bodyHash as sha256b64url, algForJwk, type ProofAlg } from "./proof";
 import { attenuate, isSubset } from "./delegation/attenuate";
@@ -19,6 +26,7 @@ import type { CapSet, Constraints } from "./types";
 
 export const DELEGATION_TYP = "agent-trust-delegation+jwt";
 export const ATTESTATION_TYP = "agent-trust-attestation+jwt";
+export const APPROVAL_TYP = "agent-trust-approval+jwt";
 export const MAX_CHAIN = 8;
 const enc = new TextEncoder(); const dec = new TextDecoder();
 const b64urlJson = (o: unknown) => b64url(enc.encode(JSON.stringify(o)));
@@ -126,4 +134,20 @@ export async function verifyAttestation(token: string, resolveKey: KeyResolver, 
   const p = r.payload;
   if (!p.atp || p.atp.v !== 1 || typeof p.sub !== "string" || typeof p.jti !== "string" || typeof p.exp !== "number" || typeof p.atp.action !== "string") return { ok: false, reason: "claims" };
   return { ok: true, payload: p, expires_in: p.exp - Math.floor(now.getTime() / 1000) };
+}
+
+// ---------- Approval object ----------
+export interface ApprovalClaims { v: 1; decision_id: string; action: string; resource: string | null; maximum: number | null; currency: string | null; request_hash: string | null; approver: string; status: "approved" | "rejected"; reason: string; device?: string; device_proof_hash?: string | null }
+export interface ApprovalJwt { iss: string; sub: string; jti: string; iat: number; exp: number; atp: ApprovalClaims }
+
+/** Verify an approval object (device- or organization-signed) and check its claim shape. Never throws. */
+export async function verifyApprovalJwt(token: string, resolveKey: KeyResolver, now: Date, opts: { maxSkewSeconds?: number } = {}): Promise<JwtResult<ApprovalJwt>> {
+  const r = await verifyJwt<ApprovalJwt>(token, APPROVAL_TYP, resolveKey, now, opts);
+  if (!r.ok) return r;
+  const p = r.payload; const a = p.atp;
+  if (!a || a.v !== 1 || typeof p.sub !== "string" || typeof p.jti !== "string" || typeof p.iat !== "number" || typeof p.exp !== "number") return { ok: false, reason: "claims" };
+  if (typeof a.decision_id !== "string" || typeof a.action !== "string" || typeof a.approver !== "string" || typeof a.reason !== "string") return { ok: false, reason: "claims" };
+  if (a.status !== "approved" && a.status !== "rejected") return { ok: false, reason: "claims" };
+  if (a.request_hash !== null && typeof a.request_hash !== "string") return { ok: false, reason: "claims" };
+  return r;
 }

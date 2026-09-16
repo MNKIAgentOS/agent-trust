@@ -125,7 +125,12 @@ when nothing fires. Conditions: `amount_lte`, `amount_gt`, `currency_in`, `regio
 `requires_attestation`, `missing_attestation`, `delegation_depth_lte`, `delegation_depth_gt`,
 `time_window`. Evaluation MUST be deterministic. A policy decision point exposing this evaluation SHOULD
 implement the AuthZEN evaluation request {{AUTHZEN}}. Human approval is a first-class signed object
-(`agent-trust-approval+jwt`) bound to the decision's request hash.
+(`agent-trust-approval+jwt`) bound to the decision's request hash: `iss` (organization), `sub` (agent),
+`jti` (approval id), `iat`, `exp`, and `atp` with `decision_id`, `action`, `resource`, `maximum`,
+`currency`, `request_hash`, `approver`, `status` and `reason`. It MAY be signed by the approver's registered
+device key (`kid` = device id, lifetime ≤ 600 s) and is then countersigned by the organization key with
+`atp.device` and `atp.device_proof_hash` (SHA-256 of the device-signed object), so the record commits to the
+device that approved.
 
 # Authorization Attestation
 

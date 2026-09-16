@@ -16,3 +16,44 @@ The profile adds the **semantic layer** — who the agent is, whom it represents
 | **CloudEvents 1.0 + JCS (RFC 8785)** | Reuse | The provenance envelope shape and its canonical hashing. |
 
 What is deliberately **not** standardized here: new cryptography, new transports, agent messaging, discovery, marketplaces, payments, reputation scores.
+
+## Cross-organisation verification over A2A
+
+MCP connects agents to tools; A2A connects agents to agents. The profile does not define agent messaging — it
+supplies what an A2A exchange between two organisations needs to be trustworthy: who the caller is, whom it
+represents, what it was authorised to do right now, and a proof of that which the receiver can check without
+calling the caller's control plane.
+
+**Caller (organisation A).** Before sending a task the caller's agent verifies the action with its own control
+plane (`POST /v1/verify`, action `a2a:<skill>`). An `ALLOW` — or an approval, once granted — can be turned into an
+**authorization attestation** (`POST /v1/attestations { decision_id }`): a short-lived JWS signed by A's
+organisation key (`typ: agent-trust-attestation+jwt`, claims: subject agent, action, resource, principal,
+effective capabilities, delegation chain ids, human approval). The A2A request carries:
+
+| Header | Content |
+| --- | --- |
+| `Agent-Proof` | DPoP-style detached JWS by the agent's own key over method, URL and body hash |
+| `Agent-Attestation` | the attestation above |
+| `Agent-Id`, `Agent-Card` | the agent id and the URL of its Agent Card (`/.well-known/agent-card.json?agent=<public id>` or the organisation-scoped `/v1/agents/{id}/agent-card`) |
+
+`mnki-sdk/a2a` → `signTaskRequest(identity, { url, body, attestation, cardUrl })` produces exactly these.
+
+**Receiver (organisation B).** `verifyBeforeAccept(guard, task)`:
+
+1. resolves the caller's Agent Card and reads the `https://mnki.com/agent-trust/profile/v0.1` extension
+   (`agent_id`, `stable_id`, `public_id`, `organization`, `jwks_url`, `passport_url`, `delegation_credential_url`);
+2. verifies `Agent-Attestation` **offline** against `jwks_url` (A's published organisation keys): signature,
+   `typ`, expiry, issuer = the card's organisation, subject = the card's agent, `atp.action` = `a2a:<skill>`;
+3. when the card advertises a public passport, checks the caller's **standing** (`registered | verified |
+   attested | revoked`) — a revoked or suspended caller is refused;
+4. runs B's **own guard** for the receiving agent (`a2a:<skill>`, the task parameters, and the caller's identity
+   in `context.a2a`) — B's delegations and policy decide whether B's agent may perform the skill for this caller;
+5. returns the **trust metadata** (caller identity, attestation claims, standing, B's decision) without any of
+   A's private evidence, and `refusalToJsonRpc()` maps a refusal onto the same JSON-RPC codes the MCP surface
+   uses (`-32003` denied, `-32001` approval, `-32006` unreachable).
+
+Both organisations record their side: A's ledger holds the decision and the issued attestation; B's ledger holds
+the decision to accept, with the attestation `jti` in its context. Nothing crosses the boundary except signed,
+short-lived objects and public keys. Federation trust levels (peer organisations whose attested agents may act
+*as if local*, level 2) build on the same attestation; the receiver above treats the caller as foreign and
+decides with its own authority model, which is the safe default between organisations that have not federated.

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "billing": {
+      "command": "npx",
+      "args": ["-y", "mnki-mcp", "--agent", "agt_your_agent", "--server", "billing", "--mode", "enforce", "--amount-map", "create_payment=amount:currency", "--upstream-url", "https://mcp.example.com/mcp", "--upstream-header", "Authorization=Bearer …"]
+    }
+  }
+}

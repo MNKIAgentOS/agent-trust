@@ -1,0 +1,15 @@
+# The proxy as a sidecar in front of an HTTP MCP server. The MCP client talks to the proxy over stdio
+# (`docker compose run -i proxy`), the proxy verifies every tools/call with Agent Trust, then forwards to `server`.
+services:
+  server:
+    image: ghcr.io/example/mcp-server:latest
+    expose: ["8080"]
+  proxy:
+    image: ghcr.io/mnkiagentos/mnki-mcp:latest
+    stdin_open: true
+    environment:
+      MNKI_URL: https://mnki.com
+      MNKI_API_KEY: ${MNKI_API_KEY}
+      MNKI_IDENTITY: ${MNKI_IDENTITY}   # base64 of the exported identity JSON (optional; signs requests)
+    command: ["--agent", "agt_your_agent", "--server", "billing", "--mode", "enforce", "--upstream-url", "http://server:8080/mcp"]
+    depends_on: [server]

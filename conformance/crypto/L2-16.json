@@ -1,0 +1,32 @@
+{
+  "id": "L2-16",
+  "level": 2,
+  "title": "approval object signed by an unregistered (revoked) device is refused",
+  "now": "2026-09-14T12:00:00Z",
+  "keys": {
+    "org_acme": {
+      "dev_1": {
+        "kty": "EC",
+        "x": "Z_aJmrfzBiYkuEJDUlyI6f3XZBytiweJCPRrg_JvVdA",
+        "y": "vij0KhxOWLVaehVkMaFvlnJ458vzjjLPEQnCYiQGTZ8",
+        "crv": "P-256",
+        "kid": "dev_1"
+      },
+      "org-1": {
+        "kty": "EC",
+        "x": "hg24RFCMDU8B5GmszY9JC6lKx1f1EvPPWX4OCAxUnVw",
+        "y": "dEkngW5hvSTICFFcQr_ge924-DZqyl4S8_sAOZNNdyo",
+        "crv": "P-256",
+        "kid": "org-1"
+      }
+    }
+  },
+  "case": {
+    "kind": "approval",
+    "token": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImFnZW50LXRydXN0LWFwcHJvdmFsK2p3dCIsImtpZCI6ImRldl85In0.eyJpc3MiOiJvcmdfYWNtZSIsInN1YiI6ImFndF8xIiwianRpIjoiYXByXzMiLCJpYXQiOjE3ODkzODcyMDAsImV4cCI6MTc4OTM4NzUwMCwiYXRwIjp7InYiOjEsImRlY2lzaW9uX2lkIjoiZGVjXzEiLCJhY3Rpb24iOiJwdXJjaGFzZS5jcmVhdGUiLCJyZXNvdXJjZSI6InN1cHBsaWVyOjQ3MTEiLCJtYXhpbXVtIjozMjAwLCJjdXJyZW5jeSI6IkVVUiIsInJlcXVlc3RfaGFzaCI6IjlmMmMxZTBhIiwiYXBwcm92ZXIiOiJ1c3JfMSIsImRldmljZSI6ImRldl85Iiwic3RhdHVzIjoiYXBwcm92ZWQiLCJyZWFzb24iOiJjaGVja2VkIHdpdGggc3VwcGxpZXIifX0.CVg8vJM77Lba1yeQwTRGSVtO5HF2t2_3DT6uEuvUKfIq7LSi_3vWBT4DuCey-PuUKZGlsxxa6YlHSWWADaNA6Q"
+  },
+  "expect": {
+    "ok": false,
+    "reason": "unknown_key"
+  }
+}

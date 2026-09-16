@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "mnki-mcp", "--agent", "agt_your_agent", "--server", "playwright", "--mode", "warn", "--upstream", "--", "npx", "@playwright/mcp@latest"]
+    }
+  }
+}

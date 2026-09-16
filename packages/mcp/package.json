@@ -1,0 +1,58 @@
+{
+  "name": "mnki-mcp",
+  "version": "0.1.0",
+  "description": "mnki-mcp — a local MCP proxy that verifies every tools/call against Agent Trust before it reaches the server (observe → warn → require_approval → enforce). Installed by `mnki protect`.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/main.js",
+  "types": "./dist/main.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "sideEffects": false,
+  "dependencies": {
+    "mnki-sdk": "^0.1.0",
+    "mnki-verifier": "^0.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MNKIAgentOS/agent-trust.git",
+    "directory": "packages/mcp"
+  },
+  "homepage": "https://mnki.com",
+  "bugs": "https://github.com/MNKIAgentOS/agent-trust/issues",
+  "keywords": [
+    "ai-agents",
+    "agent-security",
+    "authorization",
+    "delegation",
+    "spiffe",
+    "wimse",
+    "authzen",
+    "mcp",
+    "a2a",
+    "jws",
+    "dpop",
+    "mnki"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "bin": {
+    "mnki-mcp": "dist/main.js"
+  }
+}

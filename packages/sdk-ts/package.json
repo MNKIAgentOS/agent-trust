@@ -1,18 +1,64 @@
 {
-  "name": "@mnki/sdk",
+  "name": "mnki-sdk",
   "version": "0.1.0",
-  "description": "Agent Trust SDK for TypeScript: agent identity (keys + signed requests), verify, delegate, attest, and offline verification of delegation credentials and attestations.",
+  "description": "mnki — the Agent Trust SDK for TypeScript: give an agent an identity (keys + signed requests), guard() any tool call (local or hosted, observe → enforce), verify, delegate, attest, explain decisions, offline verification. Framework adapters as subpaths: mnki-sdk/openai-agents, /langchain, /claude-agent-sdk, /ai, /a2a.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./guard": {
+      "types": "./dist/guard.d.ts",
+      "default": "./dist/guard.js"
+    },
+    "./local": {
+      "types": "./dist/local.d.ts",
+      "default": "./dist/local.js"
+    },
+    "./explain": {
+      "types": "./dist/explain.d.ts",
+      "default": "./dist/explain.js"
+    },
+    "./identity-store": {
+      "types": "./dist/identity-store.d.ts",
+      "default": "./dist/identity-store.js"
+    },
+    "./mobile": {
+      "types": "./dist/mobile.d.ts",
+      "default": "./dist/mobile.js"
+    },
+    "./openai-agents": {
+      "types": "./dist/adapters/openai-agents.d.ts",
+      "default": "./dist/adapters/openai-agents.js"
+    },
+    "./langchain": {
+      "types": "./dist/adapters/langchain.d.ts",
+      "default": "./dist/adapters/langchain.js"
+    },
+    "./claude-agent-sdk": {
+      "types": "./dist/adapters/claude-agent-sdk.d.ts",
+      "default": "./dist/adapters/claude-agent-sdk.js"
+    },
+    "./ai": {
+      "types": "./dist/adapters/ai.d.ts",
+      "default": "./dist/adapters/ai.js"
+    },
+    "./a2a": {
+      "types": "./dist/adapters/a2a.d.ts",
+      "default": "./dist/adapters/a2a.js"
+    }
+  },
   "sideEffects": false,
   "dependencies": {
-    "@mnki/verifier": "^0.1.0"
+    "mnki-verifier": "^0.1.0"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/MNKIAgentOS/agent-trust",
+    "url": "git+https://github.com/MNKIAgentOS/agent-trust.git",
     "directory": "packages/sdk-ts"
   },
   "homepage": "https://mnki.com",
@@ -28,20 +74,14 @@
     "mcp",
     "a2a",
     "jws",
-    "dpop"
+    "dpop",
+    "mnki"
   ],
   "engines": {
     "node": ">=20"
   },
   "publishConfig": {
-    "access": "public",
-    "provenance": true
-  },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    }
+    "access": "public"
   },
   "files": [
     "dist",

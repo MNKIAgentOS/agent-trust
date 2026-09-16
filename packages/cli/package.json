@@ -1,17 +1,18 @@
 {
-  "name": "@mnki/cli",
+  "name": "mnki-cli",
   "version": "0.1.0",
-  "description": "agenttrust — init, identity, verify, inspect, delegate, attest, scan, protect. Run with `npm run agenttrust -- <command>` in the monorepo (tsx); packaged bin in the public repo.",
+  "description": "mnki — init, identity, verify, inspect, delegate, attest, scan, protect (local MCP proxy, dry-run by default), conformance (agenttrust remains an alias). Run with `npm run agenttrust -- <command>` in the monorepo (tsx); packaged bins in the public repo.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/main.js",
   "dependencies": {
-    "@mnki/sdk": "^0.1.0",
-    "@mnki/verifier": "^0.1.0"
+    "mnki-sdk": "^0.1.0",
+    "mnki-verifier": "^0.1.0",
+    "mnki-mcp": "^0.1.0"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/MNKIAgentOS/agent-trust",
+    "url": "git+https://github.com/MNKIAgentOS/agent-trust.git",
     "directory": "packages/cli"
   },
   "homepage": "https://mnki.com",
@@ -27,14 +28,14 @@
     "mcp",
     "a2a",
     "jws",
-    "dpop"
+    "dpop",
+    "mnki"
   ],
   "engines": {
     "node": ">=20"
   },
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   },
   "types": "./dist/main.d.ts",
   "exports": {
@@ -52,6 +53,8 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "bin": {
-    "agenttrust": "./dist/main.js"
+    "mnki-cli": "dist/main.js",
+    "mnki": "dist/main.js",
+    "agenttrust": "dist/main.js"
   }
 }

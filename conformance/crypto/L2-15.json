@@ -1,0 +1,36 @@
+{
+  "id": "L2-15",
+  "level": 2,
+  "title": "device-signed rejection is a valid approval object with status rejected",
+  "now": "2026-09-14T12:00:00Z",
+  "keys": {
+    "org_acme": {
+      "dev_1": {
+        "kty": "EC",
+        "x": "Z_aJmrfzBiYkuEJDUlyI6f3XZBytiweJCPRrg_JvVdA",
+        "y": "vij0KhxOWLVaehVkMaFvlnJ458vzjjLPEQnCYiQGTZ8",
+        "crv": "P-256",
+        "kid": "dev_1"
+      },
+      "org-1": {
+        "kty": "EC",
+        "x": "hg24RFCMDU8B5GmszY9JC6lKx1f1EvPPWX4OCAxUnVw",
+        "y": "dEkngW5hvSTICFFcQr_ge924-DZqyl4S8_sAOZNNdyo",
+        "crv": "P-256",
+        "kid": "org-1"
+      }
+    }
+  },
+  "case": {
+    "kind": "approval",
+    "token": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImFnZW50LXRydXN0LWFwcHJvdmFsK2p3dCIsImtpZCI6ImRldl8xIn0.eyJpc3MiOiJvcmdfYWNtZSIsInN1YiI6ImFndF8xIiwianRpIjoiYXByXzIiLCJpYXQiOjE3ODkzODcyMDAsImV4cCI6MTc4OTM4NzUwMCwiYXRwIjp7InYiOjEsImRlY2lzaW9uX2lkIjoiZGVjXzEiLCJhY3Rpb24iOiJwdXJjaGFzZS5jcmVhdGUiLCJyZXNvdXJjZSI6InN1cHBsaWVyOjQ3MTEiLCJtYXhpbXVtIjozMjAwLCJjdXJyZW5jeSI6IkVVUiIsInJlcXVlc3RfaGFzaCI6IjlmMmMxZTBhIiwiYXBwcm92ZXIiOiJ1c3JfMSIsImRldmljZSI6ImRldl8xIiwic3RhdHVzIjoicmVqZWN0ZWQiLCJyZWFzb24iOiJidWRnZXQgZnJvemVuIn19.kn48hLtIHas5KRlHR1eipHTmyPXEmfhhYs6TiA8PmRnVV9Ljz4WgkcfNy7WVZkjEFFb9TrTeBj87RNd5d_RX1A"
+  },
+  "expect": {
+    "ok": true,
+    "kid": "dev_1",
+    "jti": "apr_2",
+    "status": "rejected",
+    "device": "dev_1",
+    "device_proof_hash": null
+  }
+}

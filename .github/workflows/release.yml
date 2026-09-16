@@ -1,5 +1,13 @@
-# Publish the npm packages on a version tag: git tag v0.1.0 && git push origin v0.1.0
-# Requires the NPM_TOKEN secret (an npm automation token with publish rights on the scope).
+# Release on a version tag: git tag v0.1.0 && git push origin v0.1.0
+#   npm packages  — trusted publishing (OIDC, no token): configure each package's Trusted Publisher on npmjs.com
+#                   as MNKIAgentOS/agent-trust · release.yml · environment `release`. npm mints a short-lived
+#                   token from the job's OIDC identity and attaches a provenance attestation automatically.
+#                   A package must exist before its Trusted Publisher can be configured, so the very first
+#                   publish of a NEW package name is done once from a maintainer's machine (`npm publish`, 2FA).
+#                   NPM_TOKEN is honoured if the `release` environment happens to carry one (bootstrap escape
+#                   hatch only — npm is restricting 2FA-bypass tokens: accounts Aug 2026, publishing Jan 2027).
+#   PyPI `mnki`   — trusted publishing (no token) with attestations
+#   artefacts     — CycloneDX SBOM per package, SHA-256 checksums, signed keyless with cosign; attached to the GitHub release
 name: release
 on:
   push:
@@ -8,20 +16,58 @@ permissions:
   contents: write
   id-token: write
 jobs:
-  publish:
+  npm:
     runs-on: ubuntu-latest
+    environment: release
     steps:
       - uses: actions/checkout@v4
+      # No `registry-url`: setup-node would write an .npmrc pinned to NODE_AUTH_TOKEN, which is empty on the
+      # OIDC path and stops trusted publishing from authenticating. npmjs.org is the default registry anyway.
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm, registry-url: "https://registry.npmjs.org" }
+        with: { node-version: "22.14", cache: npm }
+      # Trusted publishing needs npm >= 11.5.1; the npm bundled with Node 22 is older.
+      - run: npm install -g npm@latest && npm --version
       - run: npm ci
       - run: npm run build
       - run: npm test
-      - name: Publish (verifier → sdk → cli)
+      - run: npm run sbom
+      - name: Publish (dependency order)
         env: { NODE_AUTH_TOKEN: "${{ secrets.NPM_TOKEN }}" }
         run: |
-          test -n "$NODE_AUTH_TOKEN" || { echo "::error::NPM_TOKEN secret is not set"; exit 1; }
-          for p in verifier sdk-ts cli; do (cd packages/$p && npm publish --provenance --access public); done
-      - name: GitHub release
-        env: { GH_TOKEN: "${{ github.token }}" }
-        run: gh release create "${GITHUB_REF_NAME}" --generate-notes --title "${GITHUB_REF_NAME}" || true
+          if [ -n "$NODE_AUTH_TOKEN" ]; then
+            printf '//registry.npmjs.org/:_authToken=%s\n' "$NODE_AUTH_TOKEN" > ~/.npmrc; echo "publishing with NPM_TOKEN (bootstrap path)"
+          else
+            echo "publishing with trusted publishing (OIDC)"
+          fi
+          for p in packages/verifier packages/sdk-ts packages/mcp packages/cli; do
+            [ -d "$p" ] || continue
+            name=$(node -p "require('./$p/package.json').name")
+            (cd "$p" && npm publish --access public) || { echo "::error::publish failed for $name — configure its Trusted Publisher on npmjs.com (repo MNKIAgentOS/agent-trust, workflow release.yml, environment release), or publish the first version manually once"; exit 1; }
+          done
+      - name: Checksums + signatures
+        run: |
+          mkdir -p release; for p in packages/*; do n=$(basename "$p"); (cd "$p" && npm pack --silent >/dev/null && mv *.tgz "../../release/$n.tgz" && cp sbom.cdx.json "../../release/$n.sbom.cdx.json"); done
+          (cd release && sha256sum * > SHA256SUMS)
+      - uses: sigstore/cosign-installer@v3
+      - run: cd release && cosign sign-blob --yes --output-signature SHA256SUMS.sig --output-certificate SHA256SUMS.pem SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with: { name: release, path: release }
+  pypi:
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: cd python && python -m pip install --upgrade build && python -m unittest discover -s tests && python -m build
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with: { packages-dir: python/dist, attestations: true }
+  github-release:
+    needs: [npm, pypi]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: release, path: release }
+      - env: { GH_TOKEN: "${{ github.token }}" }
+        run: gh release create "${GITHUB_REF_NAME}" release/* --generate-notes --title "${GITHUB_REF_NAME}" || gh release upload "${GITHUB_REF_NAME}" release/* --clobber

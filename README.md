@@ -13,21 +13,24 @@ OpenID Federation, MCP and A2A. No new cryptography, no new protocol.
 | Package | What it is |
 |---|---|
 | [`packages/verifier`](packages/verifier) | The pure core: parsing, delegation chain + attenuation, policy engine, request proof, delegation credentials, attestations, the 12-step evidence pipeline. Deterministic, dependency-free, WebCrypto only. |
-| [`packages/sdk-ts`](packages/sdk-ts) | TypeScript SDK: agent identity (keys, signed requests), verify, delegate, attest, offline verification against an organization's JWKS. |
-| [`packages/cli`](packages/cli) | `agenttrust init · identity · verify · inspect · delegate · attest · scan · protect`. |
-| [`python/`](python) | Python SDK (zero dependencies; `cryptography` for Agent-Proof signing). |
+| [`packages/sdk-ts`](packages/sdk-ts) | `mnki-sdk` — TypeScript SDK: agent identity (keys, signed requests), `guard()` for any tool call, verify, delegate, attest, offline verification against an organization's JWKS; framework adapters as subpaths. |
+| [`packages/cli`](packages/cli) | `mnki-cli` — `mnki demo · init · identity · verify · inspect · delegate · attest · scan · protect · conformance` (`agenttrust` is an alias). |
+| [`packages/mcp`](packages/mcp) | `mnki-mcp` — a local MCP proxy that verifies every `tools/call` before it reaches the server (`mnki protect` installs it). |
+| [`python/`](python) | `pip install mnki` — Python SDK (zero dependencies; `mnki[signing]` for Agent-Proof). |
 | [`go/`](go) | Go verifier (same vectors, no dependencies) and **`at-verify`**, the self-hosted verifier that serves `/v1/verify` from an exported organization snapshot. |
 | [`spec/`](spec) | **Agent Trust Profile v0.1**, the interoperability positioning, the Internet-Draft (`draft-mnki-agent-trust-profile-00`) and the standards plan. |
 | [`conformance/`](conformance) | Executable vectors for **certification levels 1–3** (`LEVELS.md`) — the cross-language contract; TypeScript and Go runners pass them all. |
 
 ```bash
-npm install
-npm test                       # verifier + sdk + cli suites, property tests, conformance vectors
-npm run agenttrust -- scan     # find the MCP servers and API keys agents can use on this machine
-cd go && go test ./... && go run ./cmd/at-verify -snapshot org.json   # self-hosted verifier
-npm run agenttrust -- conformance --level 3                             # certification report
+npx mnki-cli demo      # the 15-second story, no account: a €47,000 refund denied, €420 allowed
+npx mnki-cli scan      # find the MCP servers and API keys agents can use on this machine
+npm install mnki-sdk   # guard() any tool call
+pip install mnki               # same in Python
 ```
 
-Managed console, gateway hosting, trust graph and federation: [mnki.com](https://mnki.com).
+Develop against the open verifier and SDKs for free; govern fleets with the hosted control plane at
+[mnki.com](https://mnki.com) — see [COMMERCIAL.md](COMMERCIAL.md) for the boundary and
+[TRADEMARK.md](TRADEMARK.md) for name and badge use. Releases carry npm/PyPI provenance, SBOMs and
+cosign-signed checksums ([SECURITY.md](SECURITY.md)).
 
 Apache-2.0.

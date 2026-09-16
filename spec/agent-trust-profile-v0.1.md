@@ -94,6 +94,31 @@ payload { "iss": "<agent id>", "htm": "POST", "htu": "https://host/v1/verify", "
 
 8.4 Human approval is a first-class object: `{ id, decision_id, status: pending|approved|rejected|expired, reviewer_id, review_reason, requested_at, expires_at }`; resolving it is audited.
 
+8.5 **Approval objects.** A resolved approval is a JWS with `typ: "agent-trust-approval+jwt"`:
+
+```
+header  { alg: "ES256" | "EdDSA", typ: "agent-trust-approval+jwt", kid }
+payload { iss: <organization>, sub: <agent>, jti: <approval id>, iat, exp,
+          atp: { v: 1, decision_id, action, resource, maximum, currency, request_hash,
+                 approver: <user>, status: "approved" | "rejected", reason,
+                 device?: <device id>, device_proof_hash?: <sha256 hex> } }
+```
+
+Two signers exist. (a) The approver's registered **device key** (`kid` = the device id; the organization
+resolves it and it MUST be live at verification time): `exp − iat` MUST be ≤ 600 s and the claims MUST
+equal the stored approval and its decision (`jti`, `decision_id`, `action`, `resource`, `request_hash`,
+`approver`, `device`). (b) The **organization key** (`kid` in the organization JWKS) countersigns an approved
+object with the same claims plus `status` and, when the decision was made on a device, `device` and
+`device_proof_hash` = SHA-256 of the device-signed compact JWS, so the ledger's organization-signed approval
+commits to which device approved. Rejections are device-signed and recorded but not countersigned. The
+provenance event `approval.resolved` carries `signed_by`, `device_id` and `device_proof_hash`.
+
+8.6 **Step-up by device signature.** A session on a registered device proves fresh possession of the device
+key by signing a server-issued nonce as `typ: "agent-trust-stepup+jwt"`: `{ iss: <organization>, sub: <user>,
+jti: <nonce>, iat, exp (≤ 600 s after iat), atp: { v: 1, purpose: "step_up" } }`, `kid` = the device id. The
+nonce is single-use and expires within 120 s. Servers MUST require step-up before suspending or revoking an
+agent from a device session.
+
 ## 9. Authorization attestation
 
 JWS `typ: "agent-trust-attestation+jwt"`, issued by the organization from an `ALLOW` decision or a `REQUIRE_APPROVAL` decision whose approval was granted; short-lived (default 600 s, max 3600 s):

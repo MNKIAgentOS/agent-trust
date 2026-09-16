@@ -4,18 +4,22 @@
   "description": "Agent Trust — an open profile and reference implementation for proving what an autonomous AI agent is authorized to do.",
   "license": "Apache-2.0",
   "type": "module",
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "build": "npm run build -w packages/verifier && npm run build -w packages/sdk-ts && npm run build -w packages/cli && node scripts/fix-esm.mjs",
+    "build": "npm run build -w packages/verifier && npm run build -w packages/sdk-ts && npm run build -w packages/mcp && npm run build -w packages/cli && node scripts/fix-esm.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "agenttrust": "tsx packages/cli/src/main.ts"
+    "mnki": "tsx packages/cli/src/main.ts",
+    "agenttrust": "tsx packages/cli/src/main.ts",
+    "sbom": "for p in packages/*; do (cd $p && npm sbom --sbom-format cyclonedx --omit dev > sbom.cdx.json); done"
   },
   "devDependencies": {
-    "@types/node": "^20",
+    "@types/node": "^22",
     "fast-check": "^3.23.2",
     "tsx": "^4.23.13",
     "typescript": "^5",
-    "vitest": "^2.1.9"
+    "vitest": "^5.0.1"
   }
 }

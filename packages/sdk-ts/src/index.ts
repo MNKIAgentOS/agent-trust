@@ -6,13 +6,14 @@
  *
  * Runs anywhere WebCrypto + fetch exist (Node ≥ 20, Workers, browsers).
  */
-import { generateAgentKey, signRequestProof, verifyDelegationChain, verifyAttestation, type ProofAlg, type CapSet, type KeyResolver, type CredentialChainResult, type AttestationResult } from "@mnki/verifier";
-export { generateAgentKey, signRequestProof, verifyDelegationChain, verifyAttestation, decodeJwt, bodyHash } from "@mnki/verifier";
-export type { ProofAlg, CapSet } from "@mnki/verifier";
+import { generateAgentKey, signRequestProof, verifyDelegationChain, verifyAttestation, type ProofAlg, type CapSet, type KeyResolver, type CredentialChainResult, type AttestationResult } from "mnki-verifier";
+export { generateAgentKey, signRequestProof, verifyDelegationChain, verifyAttestation, decodeJwt, bodyHash } from "mnki-verifier";
+export type { ProofAlg, CapSet } from "mnki-verifier";
 
 export interface ClientOptions { baseUrl: string; apiKey: string; fetch?: typeof fetch }
 export interface Evidence { step: string; status: "pass" | "warn" | "fail" | "skipped"; title: string; detail?: string; refs?: string[] }
 export interface Decision { decision: "ALLOW" | "DENY" | "REQUIRE_APPROVAL"; reasons: string[]; evidence: Evidence[]; request_id: string; decision_id: string; approval_id: string | null; latency_ms: number; proof: { present: boolean; verified: boolean; kid: string | null; alg: string | null }; attestation: { present: boolean; valid: boolean; jti: string | null; expires_in: number | null }; agent: { id: string; verified: boolean } | null; principal: { id: string; verified: boolean } | null; delegation: { valid: boolean; chain_length: number; chain: string[] }; authorization: { capability: string; valid: boolean }; revocation: { checked: true; valid: boolean }; policy_version: string | null; policy_hash: string | null }
+export interface ApprovalStatus { id: string; decision_id: string; status: "pending" | "approved" | "rejected" | "expired"; expires_at: string | null; resolved_at: string | null }
 export interface VerifyInput { agent: string; action: string; resource?: string; principal?: string; delegation_id?: string; amount?: number; currency?: string; context?: Record<string, unknown>; attestation?: string }
 export interface RegisterAgentInput { name: string; description?: string; stableId?: string; ownerPrincipalId?: string; issuer?: string; riskTier?: "low" | "medium" | "high" | "critical"; runtimeKind?: "mcp" | "a2a" | "custom"; runtimeRef?: string; labels?: Record<string, string>; capabilities?: CapSet }
 export interface DelegateInput { issuer: { type: "principal" | "agent"; id: string }; subjectAgentId: string; parentId?: string | null; task?: string; capabilities: CapSet; constraints?: Record<string, unknown>; notAfter?: string | null }
@@ -65,6 +66,19 @@ export class AgentTrustClient {
       return { agentId: r.id, stableId: r.stableId, identity: id };
     },
   };
+  /** Minimal approval state, readable with a verify-scoped key (`decision(id)` needs read scope). */
+  readonly approvals = { status: (id: string) => this.call<ApprovalStatus>("GET", `/v1/approvals/${encodeURIComponent(id)}/status`) };
+  /** Poll until the approval leaves `pending`: jittered exponential backoff, bounded by `timeoutMs` (default 5 minutes). */
+  async waitForApproval(id: string, o: { timeoutMs?: number; initialDelayMs?: number; maxDelayMs?: number; sleep?: (ms: number) => Promise<void> } = {}): Promise<"approved" | "rejected" | "expired" | "timeout"> {
+    const deadline = Date.now() + (o.timeoutMs ?? 300_000); let delay = o.initialDelayMs ?? 1_000; const sleep = o.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+    for (;;) {
+      const s = await this.approvals.status(id);
+      if (s.status === "approved" || s.status === "rejected" || s.status === "expired") return s.status;
+      if (s.expires_at && Date.parse(s.expires_at) < Date.now()) return "expired";
+      if (Date.now() >= deadline) return "timeout";
+      await sleep(Math.min(Math.max(0, deadline - Date.now()), delay + Math.floor(Math.random() * 250))); delay = Math.min(o.maxDelayMs ?? 15_000, delay * 2);
+    }
+  }
   /** Ask for a decision. With an identity the request is signed (Agent-Proof). */
   async verify(input: VerifyInput, opts: { identity?: AgentIdentity; /** An issuer-signed identity token (SPIRE JWT-SVID / IdP JWT) presented as Agent-Credential. */ credential?: string } = {}): Promise<Decision> {
     const url = `${this.base}/api/v1/verify`; const text = JSON.stringify(input);
@@ -93,3 +107,9 @@ export class AgentTrustClient {
   verifyCredentialChain = (tokens: string[], now = new Date()): Promise<CredentialChainResult> => verifyDelegationChain(tokens, this.keyResolver(), now);
   verifyAttestationToken = (token: string, now = new Date()): Promise<AttestationResult> => verifyAttestation(token, this.keyResolver(), now);
 }
+
+// Guard, local mode, explainability and the error taxonomy live in their own modules; re-exported for convenience.
+export { createGuard, Guard, type GuardMode, type GuardOptions, type GuardResult, type GuardRecord } from "./guard";
+export { localVerify, depsFromWorld, demoWorld, type LocalWorld } from "./local";
+export { explain, type Explanation } from "./explain";
+export { MnkiError, Denied, ApprovalRequired, fromApi, type MnkiErrorCode } from "./errors";

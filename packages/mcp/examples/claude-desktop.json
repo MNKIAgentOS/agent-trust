@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "mnki-mcp", "--agent", "agt_your_agent", "--server", "github", "--mode", "observe", "--upstream", "--", "npx", "-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_…", "MNKI_URL": "https://mnki.com", "MNKI_API_KEY": "at_verify_…" }
+    }
+  }
+}

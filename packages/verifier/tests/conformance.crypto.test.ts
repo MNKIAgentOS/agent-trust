@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { verifyDelegationChain, verifyRequestProof, verifyAttestation, verify, type VerifierDeps, type AgentInfo, type CredentialInfo, type PrincipalInfo, type AttestationInfo, type ActivePolicy } from "../src/index";
+import { verifyDelegationChain, verifyRequestProof, verifyAttestation, verifyApprovalJwt, verify, type VerifierDeps, type AgentInfo, type CredentialInfo, type PrincipalInfo, type AttestationInfo, type ActivePolicy } from "../src/index";
 import type { Delegation, CapSet, VerifyRequest } from "../src/types";
 
 interface CryptoVector { id: string; level: number; title: string; now: string; keys: Record<string, Record<string, JsonWebKey>>; case?: Record<string, unknown> & { kind: string }; world?: { agent: AgentInfo | null; credential: CredentialInfo | null; principals: PrincipalInfo[]; delegations: Delegation[]; capabilities: CapSet; revoked: string[]; attestations: AttestationInfo[]; policy: ActivePolicy | null; peers?: { entity_id: string; name: string; trust_level: 1 | 2 }[] }; request?: VerifyRequest; expect: Record<string, unknown> }
@@ -17,6 +17,7 @@ describe("conformance levels 2–3 (signed objects, federation)", () => {
       const now = new Date(v.now); const e = v.expect;
       if (v.case?.kind === "delegation_chain") { const r = await verifyDelegationChain(v.case.tokens as string[], resolver(v.keys), now); expect(r.ok).toBe(e.ok); if (r.ok) { expect(r.chain).toEqual(e.chain); expect(r.subject).toBe(e.subject); expect(r.effective).toEqual(e.effective); } else { expect(r).toMatchObject({ at: e.at, reason: e.reason }); } return; }
       if (v.case?.kind === "request_proof") { const c = v.case as unknown as { proof: string; agent_keys: Record<string, JsonWebKey>; htm: string; htu: string; body_hash: string }; const r = await verifyRequestProof({ proof: c.proof, resolveKey: async (kid) => (kid ? c.agent_keys[kid] ?? null : null), htm: c.htm, htu: c.htu, bodyHash: c.body_hash, now }); expect(r.ok).toBe(e.ok); if (r.ok) { expect(r.claims.iss).toBe(e.iss); expect(r.alg).toBe(e.alg); } else expect(r.reason).toBe(e.reason); return; }
+      if (v.case?.kind === "approval") { const r = await verifyApprovalJwt(v.case.token as string, resolver(v.keys), now); expect(r.ok).toBe(e.ok); if (r.ok) { expect(r.header.kid).toBe(e.kid); expect(r.payload.jti).toBe(e.jti); expect(r.payload.atp.status).toBe(e.status); expect(r.payload.atp.device ?? null).toBe(e.device ?? null); expect(r.payload.atp.device_proof_hash ?? null).toBe(e.device_proof_hash ?? null); } else expect(r.reason).toBe(e.reason); return; }
       if (v.case?.kind === "attestation") { const r = await verifyAttestation(v.case.token as string, resolver(v.keys), now); expect(r.ok).toBe(e.ok); if (r.ok) { expect(r.payload.sub).toBe(e.sub); expect(r.payload.atp.action).toBe(e.action); expect(r.expires_in).toBe(e.expires_in); } else expect(r.reason).toBe(e.reason); return; }
       // level 3: full pipeline with peers
       const w = v.world!; const revoked = new Set(w.revoked);

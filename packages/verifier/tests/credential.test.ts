@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { generateAgentKey } from "../src/proof";
-import { issueDelegationCredential, verifyDelegationChain, issueAttestation, verifyAttestation, decodeJwt, verifyJwt, DELEGATION_TYP } from "../src/credential";
+import { issueDelegationCredential, verifyDelegationChain, issueAttestation, verifyAttestation, decodeJwt, verifyJwt, signJwt, verifyApprovalJwt, DELEGATION_TYP, APPROVAL_TYP } from "../src/credential";
 import type { CapSet } from "../src/types";
 
 const NOW = new Date("2026-09-14T12:00:00Z");
@@ -38,5 +38,23 @@ describe("signed delegation credentials + authorization attestations", () => {
     expect(await verifyAttestation(token, resolve, new Date(NOW.getTime() + 601_000))).toMatchObject({ ok: false, reason: "expired" });
     // An attestation token is not a delegation credential.
     expect(await verifyJwt(token, DELEGATION_TYP, resolve, NOW)).toMatchObject({ ok: false, reason: "typ" });
+  });
+
+  it("verifies approval objects: device-signed (kid = device id) and organization-countersigned, with claim-shape checks", async () => {
+    const device = await generateAgentKey("ES256"); const org = await generateAgentKey("ES256");
+    const resolve = async (kid: string, iss: string) => (iss !== "org_acme" ? null : kid === "dev_1" ? device.publicJwk : kid === "org-1" ? org.publicJwk : null);
+    const iat = Math.floor(NOW.getTime() / 1000);
+    const atp = { v: 1 as const, decision_id: "dec_1", action: "purchase.create", resource: "supplier:4711", maximum: 3200, currency: "EUR", request_hash: "abc", approver: "usr_1", device: "dev_1", status: "approved" as const, reason: "checked" };
+    const signed = await signJwt({ privateKey: device.privateKey, alg: "ES256", kid: "dev_1", typ: APPROVAL_TYP, payload: { iss: "org_acme", sub: "agt_1", jti: "apr_1", iat, exp: iat + 300, atp } });
+    const v = await verifyApprovalJwt(signed, resolve, NOW); expect(v.ok).toBe(true); if (v.ok) expect(v.payload.atp).toMatchObject({ status: "approved", device: "dev_1" });
+    const counter = await signJwt({ privateKey: org.privateKey, alg: "ES256", kid: "org-1", typ: APPROVAL_TYP, payload: { iss: "org_acme", sub: "agt_1", jti: "apr_1", iat, exp: iat + 86400, atp: { ...atp, device_proof_hash: "deadbeef" } } });
+    const c = await verifyApprovalJwt(counter, resolve, NOW); expect(c.ok).toBe(true); if (c.ok) expect(c.payload.atp.device_proof_hash).toBe("deadbeef");
+    expect(await verifyApprovalJwt(signed, resolve, new Date(NOW.getTime() + 400_000))).toMatchObject({ ok: false, reason: "expired" });
+    const wrongTyp = await signJwt({ privateKey: device.privateKey, alg: "ES256", kid: "dev_1", typ: "agent-trust-attestation+jwt", payload: { iss: "org_acme", sub: "agt_1", jti: "apr_1", iat, exp: iat + 300, atp } });
+    expect(await verifyApprovalJwt(wrongTyp, resolve, NOW)).toMatchObject({ ok: false, reason: "typ" });
+    const badStatus = await signJwt({ privateKey: device.privateKey, alg: "ES256", kid: "dev_1", typ: APPROVAL_TYP, payload: { iss: "org_acme", sub: "agt_1", jti: "apr_1", iat, exp: iat + 300, atp: { ...atp, status: "maybe" } } });
+    expect(await verifyApprovalJwt(badStatus, resolve, NOW)).toMatchObject({ ok: false, reason: "claims" });
+    const unknownKey = await signJwt({ privateKey: device.privateKey, alg: "ES256", kid: "dev_2", typ: APPROVAL_TYP, payload: { iss: "org_acme", sub: "agt_1", jti: "apr_1", iat, exp: iat + 300, atp } });
+    expect(await verifyApprovalJwt(unknownKey, resolve, NOW)).toMatchObject({ ok: false, reason: "unknown_key" });
   });
 });

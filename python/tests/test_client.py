@@ -1,5 +1,5 @@
 import io, json, unittest, urllib.error
-from agent_trust import AgentTrustClient, AgentTrustError, body_hash
+from mnki import AgentTrustClient, AgentTrustError, body_hash
 
 class FakeResp(io.BytesIO):
     def __enter__(self): return self
@@ -31,12 +31,30 @@ class ClientTest(unittest.TestCase):
             import cryptography  # noqa: F401
         except ImportError:
             self.skipTest("cryptography not installed")
-        from agent_trust import AgentIdentity
+        from mnki import AgentIdentity
         ident = AgentIdentity.create("agt_1")
         proof = ident.sign_proof("post", "https://X.example/v1/verify?q=1", "{}")
         self.assertEqual(proof.count("."), 2)
         header = json.loads(__import__("base64").urlsafe_b64decode(proof.split(".")[0] + "=="))
         self.assertEqual(header["typ"], "agent-trust-proof+jwt")
+        # export / import round-trip in the TypeScript file format, both algorithms
+        for alg in ("ES256", "EdDSA"):
+            i = AgentIdentity.create("agt_2", alg=alg); e = i.export()
+            self.assertEqual((e["v"], e["alg"], e["agentId"]), (1, alg, "agt_2")); self.assertIn("d", e["privateJwk"])
+            back = AgentIdentity.import_(e); self.assertEqual(back.public_jwk, i.public_jwk)
+            self.assertEqual(back.sign_proof("GET", "https://x/y", "").count("."), 2)
+
+    def test_shim_and_identity_file(self):
+        import os, tempfile, warnings
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            import agent_trust  # noqa: F401
+            self.assertTrue(any(issubclass(x.category, DeprecationWarning) for x in w))
+        from mnki.identity import default_identity_path
+        with tempfile.TemporaryDirectory() as d:
+            os.environ["MNKI_HOME"] = d
+            self.assertEqual(str(default_identity_path()), os.path.join(d, "identity.json"))
+            del os.environ["MNKI_HOME"]
 
 if __name__ == "__main__":
     unittest.main()
