@@ -20,4 +20,4 @@ This distribution is the LangChain-facing name of `mnki.adapters.langchain`; the
 from mnki.adapters.langchain import guard_tool, guard_tools
 
 __all__ = ["guard_tool", "guard_tools", "__version__"]
-__version__ = "0.1.5"
+__version__ = "0.1.6"
