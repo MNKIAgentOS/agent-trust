@@ -177,6 +177,6 @@ signed attestation from your agents in their own process.
 | npm | [`mnki-cli`](https://www.npmjs.com/package/mnki-cli) · [`mnki-sdk`](https://www.npmjs.com/package/mnki-sdk) · [`mnki-mcp`](https://www.npmjs.com/package/mnki-mcp) · [`mnki-verifier`](https://www.npmjs.com/package/mnki-verifier) |
 | PyPI | [`mnki`](https://pypi.org/project/mnki/) |
 | Container | `ghcr.io/mnkiagentos/mnki-mcp` (cosign-signed) |
-| MCP Registry | `io.github.mnkiagentos/mnki-mcp` |
+| MCP Registry | `io.github.MNKIAgentOS/mnki-mcp` |
 | Claude Desktop extension | `mnki-mcp.mcpb` on every [GitHub release](https://github.com/MNKIAgentOS/agent-trust/releases) |
 | Source | [github.com/MNKIAgentOS/agent-trust](https://github.com/MNKIAgentOS/agent-trust) (Apache-2.0) |

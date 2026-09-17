@@ -55,5 +55,5 @@
   "bin": {
     "mnki-mcp": "dist/main.js"
   },
-  "mcpName": "io.github.mnkiagentos/mnki-mcp"
+  "mcpName": "io.github.MNKIAgentOS/mnki-mcp"
 }
