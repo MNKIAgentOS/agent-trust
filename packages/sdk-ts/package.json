@@ -1,6 +1,6 @@
 {
   "name": "mnki-sdk",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "mnki — the Agent Trust SDK for TypeScript: give an agent an identity (keys + signed requests), guard() any tool call (local or hosted, observe → enforce), verify, delegate, attest, explain decisions, offline verification. Framework adapters as subpaths: mnki-sdk/openai-agents, /langchain, /claude-agent-sdk, /ai, /a2a.",
   "license": "Apache-2.0",
   "type": "module",
@@ -54,7 +54,7 @@
   },
   "sideEffects": false,
   "dependencies": {
-    "mnki-verifier": "^0.1.1"
+    "mnki-verifier": "^0.1.2"
   },
   "repository": {
     "type": "git",

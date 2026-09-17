@@ -1,5 +1,11 @@
 # Standards engagement plan
 
+**Posted 16 September 2026:** `draft-mnki-agent-trust-profile-00` is an active IETF Internet-Draft
+(individual submission, Informational) —
+[datatracker](https://datatracker.ietf.org/doc/draft-mnki-agent-trust-profile/) ·
+[text](https://www.ietf.org/archive/id/draft-mnki-agent-trust-profile-00.txt). It expires 19 March 2027;
+a `-01` before then keeps it active. `-00` is frozen as posted.
+
 Position: *an early implementer and contributor, not a competing protocol.* The profile is a semantic
 layer on OAuth/OIDC, WIMSE/SPIFFE, DPoP, AuthZEN, OpenID Federation, MCP and A2A.
 
@@ -27,8 +33,12 @@ gem install kramdown-rfc && pip install xml2rfc
 cd spec/rendered && kramdown-rfc2629 ../draft-mnki-agent-trust-profile-00.md > draft-mnki-agent-trust-profile-00.xml && xml2rfc --text --html draft-mnki-agent-trust-profile-00.xml
 ```
 
-Submission checklist (human steps):
-1. Replace the placeholder author (`Editor (MNKI)`) in the kramdown front matter with the named editor — the Datatracker requires a person — and re-render.
-2. Upload `spec/rendered/draft-mnki-agent-trust-profile-00.xml` at https://datatracker.ietf.org/submit/ (independent submission, Informational). The confirmation email goes to the author address.
-3. Announce on the WIMSE and OAuth lists (see the venue plan above) and open the OpenID AuthZEN / Federation issues listed there.
-4. On feedback, bump `docname` to `-01`, re-render, resubmit; keep the profile text in `spec/agent-trust-profile-v0.1.md` in sync.
+Submission checklist:
+1. ~~Named editor in the front matter~~ — done: Javvad Azam, MNKI AgentOS, NL.
+2. ~~Upload the XML at https://datatracker.ietf.org/submit/~~ — done, posted 16 Sep 2026 (idnits: 0 errors,
+   0 flaws, 1 warning about non-ASCII characters, since fixed in the source for `-01`).
+3. **Next:** announce on the WIMSE and OAuth lists and open the OpenID AuthZEN / Federation issues — drafts in
+   [../docs/gtm/announcements.md](../docs/gtm/announcements.md).
+4. On feedback, bump `docname` to `-01`, re-render, resubmit; keep the profile text in
+   `spec/agent-trust-profile-v0.1.md` in sync. Re-render with the venv used for `-00`:
+   `xml2rfc --text --html spec/rendered/draft-mnki-agent-trust-profile-00.xml`.

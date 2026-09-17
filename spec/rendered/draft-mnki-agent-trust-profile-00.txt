@@ -2,10 +2,10 @@
 
 
 
-Network Working Group                                     E. (MNKI), Ed.
-Internet-Draft                                           MNKI (Petso BV)
-Intended status: Informational                         15 September 2026
-Expires: 19 March 2027
+Network Working Group                                       J. Azam, Ed.
+Internet-Draft                                              MNKI AgentOS
+Intended status: Informational                         16 September 2026
+Expires: 20 March 2027
 
 
   The Agent Trust Profile: Verifiable Authority for Autonomous Agents
@@ -42,7 +42,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 19 March 2027.
+   This Internet-Draft will expire on 20 March 2027.
 
 Copyright Notice
 
@@ -53,7 +53,7 @@ Copyright Notice
 
 
 
-(MNKI)                    Expires 19 March 2027                 [Page 1]
+Azam                      Expires 20 March 2027                 [Page 1]
 
 Internet-Draft             agent-trust-profile            September 2026
 
@@ -109,7 +109,7 @@ Table of Contents
 
 
 
-(MNKI)                    Expires 19 March 2027                 [Page 2]
+Azam                      Expires 20 March 2027                 [Page 2]
 
 Internet-Draft             agent-trust-profile            September 2026
 
@@ -165,7 +165,7 @@ Internet-Draft             agent-trust-profile            September 2026
 
 
 
-(MNKI)                    Expires 19 March 2027                 [Page 3]
+Azam                      Expires 20 March 2027                 [Page 3]
 
 Internet-Draft             agent-trust-profile            September 2026
 
@@ -221,7 +221,7 @@ Internet-Draft             agent-trust-profile            September 2026
 
 
 
-(MNKI)                    Expires 19 March 2027                 [Page 4]
+Azam                      Expires 20 March 2027                 [Page 4]
 
 Internet-Draft             agent-trust-profile            September 2026
 
@@ -277,7 +277,7 @@ Internet-Draft             agent-trust-profile            September 2026
 
 
 
-(MNKI)                    Expires 19 March 2027                 [Page 5]
+Azam                      Expires 20 March 2027                 [Page 5]
 
 Internet-Draft             agent-trust-profile            September 2026
 
@@ -333,7 +333,7 @@ Internet-Draft             agent-trust-profile            September 2026
 
 
 
-(MNKI)                    Expires 19 March 2027                 [Page 6]
+Azam                      Expires 20 March 2027                 [Page 6]
 
 Internet-Draft             agent-trust-profile            September 2026
 
@@ -367,9 +367,10 @@ Appendix A.  Acknowledgements
 
 Author's Address
 
-   Editor (MNKI) (editor)
-   MNKI (Petso BV)
-   Email: hello@mnki.com
+   Javvad Azam (editor)
+   MNKI AgentOS
+   Netherlands
+   Email: javvad@mnki.com
    URI:   https://mnki.com
 
 
@@ -388,5 +389,4 @@ Author's Address
 
 
 
-
-(MNKI)                    Expires 19 March 2027                 [Page 7]
+Azam                      Expires 20 March 2027                 [Page 7]

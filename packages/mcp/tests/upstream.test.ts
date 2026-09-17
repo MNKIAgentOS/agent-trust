@@ -30,7 +30,9 @@ describe("upstreams", () => {
   it("stdio: spawns the server, frames its stdout, closes cleanly", async () => {
     const up = stdioUpstream(process.execPath, ["-e", "process.stdin.on('data',d=>{for(const l of d.toString().split('\\n'))if(l)process.stdout.write(JSON.stringify({echo:JSON.parse(l).id})+'\\n')})"], process.env, { write: () => true } as unknown as NodeJS.WritableStream);
     const got: string[] = []; up.onMessage((x) => got.push(x));
-    up.send('{"id":1}'); up.send('{"id":2}'); await new Promise((r) => setTimeout(r, 300));
+    up.send('{"id":1}'); up.send('{"id":2}');
+    // Spawning a node child can take well over 300 ms on a loaded machine: wait for the replies, bounded.
+    const deadline = Date.now() + 5000; while (got.length < 2 && Date.now() < deadline) await new Promise((r) => setTimeout(r, 25));
     expect(got).toEqual(['{"echo":1}', '{"echo":2}']); await up.close();
   });
 });

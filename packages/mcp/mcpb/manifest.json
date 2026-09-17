@@ -1,0 +1,118 @@
+{
+  "manifest_version": "0.2",
+  "name": "mnki-mcp",
+  "display_name": "Agent Trust · verified MCP proxy",
+  "version": "0.1.2",
+  "description": "Puts Agent Trust in front of any MCP server: every tool call is checked against policy, with evidence, before it runs.",
+  "long_description": "Agent Trust gives an AI agent an identity, bounded authority and proof of every consequential action. This extension wraps an MCP server you already use (GitHub, filesystem, a database, anything with a command) and verifies each tools/call against your organisation's policy before it reaches the server. Start in observe mode (nothing is blocked, would-be denials are logged), read the shadow log in the console, then switch to enforce. Denials come back to Claude with the evidence list; actions that policy escalates wait for a human approval on the Agent Trust phone app. Needs a free Agent Trust organisation at https://mnki.com and an API key with the verify scope.",
+  "author": {
+    "name": "MNKI AgentOS",
+    "email": "hello@mnki.com",
+    "url": "https://mnki.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MNKIAgentOS/agent-trust"
+  },
+  "homepage": "https://mnki.com/docs/integrations",
+  "documentation": "https://mnki.com/docs",
+  "support": "https://github.com/MNKIAgentOS/agent-trust/issues",
+  "icon": "icon.png",
+  "server": {
+    "type": "node",
+    "entry_point": "node_modules/mnki-mcp/dist/main.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/node_modules/mnki-mcp/dist/main.js",
+        "--agent",
+        "${user_config.agent}",
+        "--server",
+        "${user_config.server}",
+        "--mode",
+        "${user_config.mode}",
+        "--url",
+        "${user_config.console_url}",
+        "--upstream",
+        "--",
+        "${user_config.upstream}"
+      ],
+      "env": {
+        "MNKI_API_KEY": "${user_config.api_key}"
+      }
+    }
+  },
+  "user_config": {
+    "upstream": {
+      "type": "string",
+      "title": "MCP server to protect (command and arguments)",
+      "description": "The command Claude Desktop would otherwise run for this server, one argument per line, e.g. npx / -y / @modelcontextprotocol/server-github.",
+      "multiple": true,
+      "required": true,
+      "default": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "${HOME}"
+      ]
+    },
+    "agent": {
+      "type": "string",
+      "title": "Agent identity",
+      "description": "The Agent Trust identity these tool calls run under (console → Agents, or `mnki identity create`).",
+      "required": true,
+      "default": "claude-desktop"
+    },
+    "server": {
+      "type": "string",
+      "title": "Server name",
+      "description": "How this server appears in the ledger and the shadow log.",
+      "required": true,
+      "default": "claude-desktop"
+    },
+    "mode": {
+      "type": "string",
+      "title": "Mode",
+      "description": "observe (log only, nothing blocked), warn, require_approval, or enforce.",
+      "required": true,
+      "default": "observe"
+    },
+    "console_url": {
+      "type": "string",
+      "title": "Console URL",
+      "description": "https://mnki.com, or your self-hosted control plane.",
+      "required": true,
+      "default": "https://mnki.com"
+    },
+    "api_key": {
+      "type": "string",
+      "title": "Agent Trust API key",
+      "description": "A key with the verify scope (console → Settings → API keys). Stored in the OS keychain.",
+      "sensitive": true,
+      "required": true
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ],
+    "runtimes": {
+      "node": ">=20.0.0"
+    }
+  },
+  "keywords": [
+    "agent-trust",
+    "mnki",
+    "authorization",
+    "policy",
+    "audit",
+    "approval",
+    "security",
+    "proxy",
+    "mcp"
+  ],
+  "license": "Apache-2.0"
+}

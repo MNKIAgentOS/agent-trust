@@ -22,15 +22,18 @@
   <front>
     <title abbrev="agent-trust-profile">The Agent Trust Profile: Verifiable Authority for Autonomous Agents</title>
 
-    <author initials="E." surname="(MNKI)" fullname="Editor (MNKI)" role="editor">
-      <organization>MNKI (Petso BV)</organization>
+    <author initials="J." surname="Azam" fullname="Javvad Azam" role="editor">
+      <organization>MNKI AgentOS</organization>
       <address>
-        <email>hello@mnki.com</email>
+        <postal>
+          <country>NL</country>
+        </postal>
+        <email>javvad@mnki.com</email>
         <uri>https://mnki.com</uri>
       </address>
     </author>
 
-    <date year="2026" month="September" day="15"/>
+    <date year="2026" month="September" day="16"/>
 
     <area>Security</area>
     

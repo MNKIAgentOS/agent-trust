@@ -8,32 +8,32 @@ ipr: trust200902
 area: Security
 keyword: [agent, delegation, authorization, attestation, provenance, WIMSE, AuthZEN]
 author:
-  # Datatracker requires a named person as author/editor: put your name here before submitting.
-  - name: Editor (MNKI)
-    role: editor
-    organization: MNKI (Petso BV)
-    email: hello@mnki.com
-    uri: https://mnki.com
+ - name: Javvad Azam
+ role: editor
+ organization: MNKI AgentOS
+ email: javvad@mnki.com
+ uri: https://mnki.com
+ country: NL
 normative:
-  RFC2119:
-  RFC7515:
-  RFC7517:
-  RFC7519:
-  RFC8785:
-  RFC9449:
+ RFC2119:
+ RFC7515:
+ RFC7517:
+ RFC7519:
+ RFC8785:
+ RFC9449:
 informative:
-  AUTHZEN:
-    title: "OpenID AuthZEN Authorization API 1.0"
-    target: https://openid.net/specs/authorization-api-1_0.html
-  OIDFED:
-    title: "OpenID Federation 1.0"
-    target: https://openid.net/specs/openid-federation-1_0.html
-  SPIFFE:
-    title: "SPIFFE: Secure Production Identity Framework for Everyone"
-    target: https://spiffe.io/docs/latest/spiffe-about/overview/
-  CLOUDEVENTS:
-    title: "CloudEvents 1.0"
-    target: https://cloudevents.io/
+ AUTHZEN:
+ title: "OpenID AuthZEN Authorization API 1.0"
+ target: https://openid.net/specs/authorization-api-1_0.html
+ OIDFED:
+ title: "OpenID Federation 1.0"
+ target: https://openid.net/specs/openid-federation-1_0.html
+ SPIFFE:
+ title: "SPIFFE: Secure Production Identity Framework for Everyone"
+ target: https://spiffe.io/docs/latest/spiffe-about/overview/
+ CLOUDEVENTS:
+ title: "CloudEvents 1.0"
+ target: https://cloudevents.io/
 ---
 
 --- abstract
@@ -41,8 +41,8 @@ informative:
 Autonomous AI agents act on behalf of people and organizations across system and organizational
 boundaries. Existing credentials establish that a token is valid; they do not express which agent is
 acting, for whom, under what delegated authority, within which constraints, and whether that authority is
-still current. This document profiles existing standards — JWS, OAuth/OIDC, SPIFFE/WIMSE workload
-identity, DPoP-style proof of possession, OpenID AuthZEN and OpenID Federation — to carry those semantics:
+still current. This document profiles existing standards -- JWS, OAuth/OIDC, SPIFFE/WIMSE workload
+identity, DPoP-style proof of possession, OpenID AuthZEN and OpenID Federation -- to carry those semantics:
 agent identity and principal binding, delegation with authority attenuation, capability-based
 authorization with constraints, request proof of possession, authorization attestations, tamper-evident
 provenance, revocation, and cross-organization trust. It defines no new cryptography, transport or
@@ -71,7 +71,7 @@ in UTC. Canonicalization for hashing is JCS {{RFC8785}}.
 | Agent | Cryptographically identifiable software actor with a stable identifier, lifecycle and credentials |
 | Principal | The human, service or organization the agent acts for; always distinct from the agent |
 | Organization | The trust domain that operates the agent and signs its delegations and attestations |
-| Capability | `{action, resource, constraints?}` — a machine-evaluable unit of authority |
+| Capability | `{action, resource, constraints?}` -- a machine-evaluable unit of authority |
 | Delegation | A grant of capabilities from an issuer to a subject agent with validity and status |
 | Effective authority | The intersection of every grant in the chain, never the union |
 | Decision | `ALLOW`, `DENY` or `REQUIRE_APPROVAL`, derived from evidence rows |
@@ -106,7 +106,7 @@ Type `agent-trust-delegation+jwt`. Claims: `iss` (organization), `sub` (subject 
 `capabilities`, `constraints`, `effective`, `parent`, `parent_hash` (base64url SHA-256 of the parent JWS),
 `depth`, `task`. A chain root MUST be issued by a principal at depth 0; each child MUST be issued by the
 parent's subject, reference its parent by `jti` and `parent_hash`, increment `depth`, and satisfy
-`capabilities ⊆ parent effective` with `effective = attenuate(parent effective, capabilities)`. Chains MUST
+`capabilities is a subset of parent effective` with `effective = attenuate(parent effective, capabilities)`. Chains MUST
 NOT exceed depth 8.
 
 # Request Proof of Possession
@@ -128,7 +128,7 @@ implement the AuthZEN evaluation request {{AUTHZEN}}. Human approval is a first-
 (`agent-trust-approval+jwt`) bound to the decision's request hash: `iss` (organization), `sub` (agent),
 `jti` (approval id), `iat`, `exp`, and `atp` with `decision_id`, `action`, `resource`, `maximum`,
 `currency`, `request_hash`, `approver`, `status` and `reason`. It MAY be signed by the approver's registered
-device key (`kid` = device id, lifetime ≤ 600 s) and is then countersigned by the organization key with
+device key (`kid` = device id, lifetime <= 600 s) and is then countersigned by the organization key with
 `atp.device` and `atp.device_proof_hash` (SHA-256 of the device-signed object), so the record commits to the
 device that approved.
 

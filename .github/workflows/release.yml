@@ -64,12 +64,50 @@ jobs:
       - run: cd python && python -m pip install --upgrade build && python -m unittest discover -s tests && python -m build
       - uses: pypa/gh-action-pypi-publish@release/v1
         with: { packages-dir: python/dist, attestations: true, skip-existing: true }
+  # Claude Desktop extension: a self-contained bundle (manifest + the published npm package and its runtime deps),
+  # packed with Anthropic's mcpb tool and attached to the GitHub release. Users double-click it; Claude Desktop
+  # asks for the upstream command, agent id and API key and keeps the key in its keychain.
+  mcpb:
+    needs: npm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - name: Bundle
+        run: |
+          set -e; version="${GITHUB_REF_NAME#v}"; name=$(node -p "require('./packages/mcp/package.json').name")
+          mkdir -p bundle release-mcpb; cp packages/mcp/mcpb/manifest.json packages/mcp/mcpb/icon.png bundle/
+          cd bundle; printf '{ "name": "%s-extension", "version": "%s", "private": true }\n' "$name" "$version" > package.json
+          # The package was published moments ago; the registry can lag by a minute.
+          for i in $(seq 1 12); do npm install --omit=dev --no-audit --no-fund "$name@$version" && break; echo "waiting for $name@$version on npm"; sleep 15; done
+          [ -f "node_modules/$name/dist/main.js" ] || { echo "::error::$name@$version did not install"; exit 1; }
+          npx --yes @anthropic-ai/mcpb pack . "../release-mcpb/$name.mcpb"
+          cd .. && ls -la release-mcpb
+      - uses: actions/upload-artifact@v4
+        with: { name: mcpb, path: release-mcpb }
+  # MCP Registry (registry.modelcontextprotocol.io): the io.github.* namespace authenticates with this repository's
+  # GitHub OIDC token, and npm ownership is proven by the `mcpName` field in the published package.json.
+  mcp-registry:
+    needs: npm
+    runs-on: ubuntu-latest
+    permissions: { id-token: write, contents: read }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish server.json
+        run: |
+          set -e; version="${GITHUB_REF_NAME#v}"
+          curl -sSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+          cd packages/mcp && node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync("server.json","utf8"));const v=process.argv[1];j.version=v;for(const p of j.packages??[])p.version=v;fs.writeFileSync("server.json",JSON.stringify(j,null,2)+"\n")' "$version"
+          ../../mcp-publisher login github-oidc && ../../mcp-publisher publish || echo "::warning::MCP Registry publish failed — publish server.json manually with mcp-publisher (see packages/mcp/server.json)"
   github-release:
-    needs: [npm, pypi]
+    needs: [npm, pypi, mcpb]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with: { name: release, path: release }
+      - uses: actions/download-artifact@v4
+        with: { name: mcpb, path: release }
       - env: { GH_TOKEN: "${{ github.token }}" }
         run: gh release create "${GITHUB_REF_NAME}" release/* --generate-notes --title "${GITHUB_REF_NAME}" || gh release upload "${GITHUB_REF_NAME}" release/* --clobber

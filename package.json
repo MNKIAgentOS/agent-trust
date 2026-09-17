@@ -1,6 +1,6 @@
 {
   "name": "agent-trust",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "Agent Trust — an open profile and reference implementation for proving what an autonomous AI agent is authorized to do.",
   "license": "Apache-2.0",

@@ -1,14 +1,14 @@
 {
   "name": "mnki-cli",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "mnki — init, identity, verify, inspect, delegate, attest, scan, protect (local MCP proxy, dry-run by default), conformance (agenttrust remains an alias). Run with `npm run agenttrust -- <command>` in the monorepo (tsx); packaged bins in the public repo.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/main.js",
   "dependencies": {
-    "mnki-sdk": "^0.1.1",
-    "mnki-verifier": "^0.1.1",
-    "mnki-mcp": "^0.1.1"
+    "mnki-sdk": "^0.1.2",
+    "mnki-verifier": "^0.1.2",
+    "mnki-mcp": "^0.1.2"
   },
   "repository": {
     "type": "git",

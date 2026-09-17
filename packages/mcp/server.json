@@ -1,0 +1,75 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "name": "io.github.mnkiagentos/mnki-mcp",
+  "description": "Verified MCP proxy: every tools/call checked against Agent Trust policy, with evidence, before it runs.",
+  "version": "0.1.2",
+  "websiteUrl": "https://mnki.com/docs/integrations",
+  "repository": {
+    "url": "https://github.com/MNKIAgentOS/agent-trust",
+    "source": "github",
+    "subfolder": "packages/mcp"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "mnki-mcp",
+      "version": "0.1.2",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "named",
+          "name": "--agent",
+          "description": "Agent identity the tool calls run under (create one in the console or with `mnki identity create`).",
+          "isRequired": true,
+          "valueHint": "invoice-agent"
+        },
+        {
+          "type": "named",
+          "name": "--server",
+          "description": "Name of the protected server, used in the ledger and the shadow log.",
+          "isRequired": false,
+          "valueHint": "github"
+        },
+        {
+          "type": "named",
+          "name": "--mode",
+          "description": "observe (default: log only), warn, require_approval or enforce.",
+          "isRequired": false,
+          "default": "observe"
+        },
+        {
+          "type": "named",
+          "name": "--upstream",
+          "description": "The real MCP server to launch, after `--`: e.g. `-- npx -y @modelcontextprotocol/server-github`.",
+          "isRequired": false,
+          "valueHint": "-- npx -y @modelcontextprotocol/server-github"
+        },
+        {
+          "type": "named",
+          "name": "--upstream-url",
+          "description": "Alternative to --upstream: a Streamable HTTP MCP server URL; add `--upstream-header k=v` for its auth.",
+          "isRequired": false,
+          "valueHint": "https://mcp.example.com/mcp"
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "MNKI_API_KEY",
+          "description": "Agent Trust API key with the verify scope (console → Settings → API keys).",
+          "isRequired": true,
+          "isSecret": true
+        },
+        {
+          "name": "MNKI_URL",
+          "description": "Console base URL; https://mnki.com unless self-hosted.",
+          "isRequired": false,
+          "default": "https://mnki.com"
+        }
+      ]
+    }
+  ]
+}

@@ -5,6 +5,8 @@
  * Nothing here carries prices, checkout or billing links — plans are read-only in the apps.
  */
 import type { Evidence } from "./index";
+/** Re-exported so the app can import the whole contract from `mnki-sdk/mobile` alone. */
+export type { Evidence };
 
 export type DevicePlatform = "ios" | "android";
 export type NotifyCategory = "denied" | "escalations" | "integrity" | "weekly_digest" | "quota" | "licence";
@@ -21,6 +23,8 @@ export type MobileSessionGrant = { grant: "otp"; email: string; code: string; de
 export interface MobileSession { session: string; expires_at: string; device?: Device; me: MobileMe | null }
 
 export interface Membership { orgId: string; name: string; role: "owner" | "admin" | "member" | "viewer"; active: boolean }
+/** A promo code the organisation saved (from the phone or the web) for its next checkout in the web console. Terms only — never a price. */
+export interface MobilePromo { code: string; name: string; description: string; saved_at: string; source: "web" | "ios" | "android" | "admin"; expires_at: string | null; plans: ("individual" | "team")[] | null; intervals: ("monthly" | "annual")[] | null; min_seats: number | null; valid: boolean; reason: string | null; detail: string | null }
 export interface MobileMe {
   user: { id: string; email: string; name: string | null };
   org: { id: string; name: string; role: Membership["role"] | null };
@@ -32,6 +36,8 @@ export interface MobileMe {
   stepped_up: boolean;
   device_id: string | null;
   console: { runtime: "node" | "cloudflare"; mobile_api: number; push_enabled: boolean };
+  /** Saved promo code waiting for the next web checkout (owners and admins can add or remove it via /api/mobile/promo). Absent on consoles older than mobile_api 1 with promo support. */
+  promo?: MobilePromo | null;
 }
 
 export interface MobileOverview {

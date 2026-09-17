@@ -19,3 +19,7 @@ attributable, authorized, constrained, current and verifiable.*
 Status: **v0.1, experimental.** The reference implementation is `packages/verifier`
 (TypeScript, Apache-2.0). Breaking changes are expected until v0.5; the conformance
 vectors are the compatibility contract.
+
+**Internet-Draft:** `draft-mnki-agent-trust-profile-00` is posted and active (individual submission,
+Informational, 16 Sep 2026): <https://datatracker.ietf.org/doc/draft-mnki-agent-trust-profile/>. `-00` is
+frozen; changes go to `-01` (see STANDARDS.md).
