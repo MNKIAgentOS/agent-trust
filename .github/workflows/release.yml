@@ -67,7 +67,17 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - run: cd python && python -m pip install --upgrade build && python -m unittest discover -s tests && python -m build
+      # PyPI rejects unknown Trove classifiers with a 400 at upload time; check every pyproject before building.
+      - run: |
+          python -m pip install --upgrade build tomli trove-classifiers
+          python - <<'PY'
+          import glob, sys, tomli
+          from trove_classifiers import classifiers
+          bad = [(f, c) for f in glob.glob("python*/pyproject.toml") for c in tomli.load(open(f, "rb"))["project"].get("classifiers", []) if c not in classifiers]
+          for f, c in bad: print(f"::error file={f}::unknown classifier {c!r}")
+          sys.exit(1 if bad else 0)
+          PY
+      - run: cd python && python -m unittest discover -s tests && python -m build
       - uses: pypa/gh-action-pypi-publish@release/v1
         with: { packages-dir: python/dist, attestations: true, skip-existing: true }
       # langchain-mnki: the LangChain-facing name of mnki.adapters.langchain (needs its own Trusted Publisher on PyPI).
