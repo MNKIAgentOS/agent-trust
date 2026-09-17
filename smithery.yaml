@@ -1,0 +1,39 @@
+# Smithery listing for mnki-mcp: a stdio proxy that verifies every tools/call against Agent Trust before it reaches
+# the server it wraps. The upstream command is part of the configuration because the proxy protects *another* server.
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required: [apiKey, agent, upstream]
+    properties:
+      apiKey:
+        type: string
+        description: Agent Trust API key with the verify scope (console → Settings → API keys).
+      agent:
+        type: string
+        description: Agent identity the tool calls run under.
+        default: smithery-agent
+      mode:
+        type: string
+        description: observe (log only), warn, require_approval or enforce.
+        default: observe
+      consoleUrl:
+        type: string
+        description: Console base URL; https://mnki.com unless self-hosted.
+        default: https://mnki.com
+      upstream:
+        type: string
+        description: The MCP server to protect, as one command line, e.g. "npx -y @modelcontextprotocol/server-github".
+  commandFunction:
+    |-
+    (config) => ({
+      command: 'npx',
+      args: ['-y', 'mnki-mcp', '--agent', config.agent, '--server', 'smithery', '--mode', config.mode || 'observe', '--url', config.consoleUrl || 'https://mnki.com', '--upstream', '--', ...config.upstream.split(' ')],
+      env: { MNKI_API_KEY: config.apiKey }
+    })
+  exampleConfig:
+    apiKey: at_verify_example
+    agent: smithery-agent
+    mode: observe
+    consoleUrl: https://mnki.com
+    upstream: npx -y @modelcontextprotocol/server-filesystem .

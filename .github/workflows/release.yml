@@ -114,7 +114,15 @@ jobs:
           set -e; version="${INPUT_VERSION:-${GITHUB_REF_NAME#v}}"
           curl -sSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
           cd packages/mcp && node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync("server.json","utf8"));const v=process.argv[1];j.version=v;for(const p of j.packages??[])p.version=v;fs.writeFileSync("server.json",JSON.stringify(j,null,2)+"\n")' "$version"
-          ../../mcp-publisher login github-oidc && ../../mcp-publisher publish || { echo "::error::MCP Registry publish failed — fix packages/mcp/server.json (see the validation error above) or publish it by hand with mcp-publisher"; exit 1; }
+          # The registry checks the package on npm; a version published seconds ago may not have replicated yet.
+          for i in $(seq 1 20); do npm view "$(node -p "require('./package.json').name")@$version" version >/dev/null 2>&1 && break; echo "waiting for the package on npm"; sleep 30; done
+          ../../mcp-publisher login github-oidc
+          for i in 1 2 3 4 5; do
+            out=$(../../mcp-publisher publish 2>&1) && { echo "$out"; exit 0; }
+            echo "$out"; echo "$out" | grep -q "duplicate version" && { echo "version already in the registry — nothing to do"; exit 0; }
+            echo "registry publish attempt $i failed, retrying in 60 s"; sleep 60
+          done
+          echo "::error::MCP Registry publish failed — fix packages/mcp/server.json (see the validation error above) or re-run this workflow manually with the version"; exit 1
   github-release:
     if: github.event_name == 'push'
     needs: [npm, pypi, mcpb]

@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "mnki-mcp": {
+      "command": "npx",
+      "args": ["-y", "mnki-mcp", "--agent", "cursor", "--server", "protected", "--mode", "observe", "--upstream", "--", "npx", "-y", "@modelcontextprotocol/server-filesystem", "."],
+      "env": { "MNKI_API_KEY": "${MNKI_API_KEY}" }
+    }
+  }
+}
