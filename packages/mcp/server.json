@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
   "name": "io.github.mnkiagentos/mnki-mcp",
-  "description": "Verified MCP proxy: every tools/call checked against Agent Trust policy, with evidence, before it runs.",
+  "description": "MCP proxy that checks every tools/call against Agent Trust policy, with evidence, before it runs.",
   "version": "0.1.2",
   "websiteUrl": "https://mnki.com/docs/integrations",
   "repository": {
