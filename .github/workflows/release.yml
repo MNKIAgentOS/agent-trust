@@ -70,6 +70,13 @@ jobs:
       - run: cd python && python -m pip install --upgrade build && python -m unittest discover -s tests && python -m build
       - uses: pypa/gh-action-pypi-publish@release/v1
         with: { packages-dir: python/dist, attestations: true, skip-existing: true }
+      # langchain-mnki: the LangChain-facing name of mnki.adapters.langchain (needs its own Trusted Publisher on PyPI).
+      - run: |
+          [ -d python-langchain ] || exit 0
+          cd python-langchain && python -m unittest discover -s tests && python -m build
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        if: hashFiles('python-langchain/pyproject.toml') != ''
+        with: { packages-dir: python-langchain/dist, attestations: true, skip-existing: true }
   # Claude Desktop extension: a self-contained bundle (manifest + the published npm package and its runtime deps),
   # packed with Anthropic's mcpb tool and attached to the GitHub release. Users double-click it; Claude Desktop
   # asks for the upstream command, agent id and API key and keeps the key in its keychain.

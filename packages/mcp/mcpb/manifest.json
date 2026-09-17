@@ -2,7 +2,7 @@
   "manifest_version": "0.2",
   "name": "mnki-mcp",
   "display_name": "Agent Trust · verified MCP proxy",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Puts Agent Trust in front of any MCP server: every tool call is checked against policy, with evidence, before it runs.",
   "long_description": "Agent Trust gives an AI agent an identity, bounded authority and proof of every consequential action. This extension wraps an MCP server you already use (GitHub, filesystem, a database, anything with a command) and verifies each tools/call against your organisation's policy before it reaches the server. Start in observe mode (nothing is blocked, would-be denials are logged), read the shadow log in the console, then switch to enforce. Denials come back to Claude with the evidence list; actions that policy escalates wait for a human approval on the Agent Trust phone app. Needs a free Agent Trust organisation at https://mnki.com and an API key with the verify scope.",
   "author": {

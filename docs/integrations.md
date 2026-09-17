@@ -116,9 +116,25 @@ Denials reach the client as JSON-RPC error `-32003` with the evidence; an approv
 ### Hosted MCP gateway (no local proxy)
 
 Console → Integrations → **MCP gateway** → the upstream URL and its auth header. The console answers with a
-gateway URL and a key; point the client at that URL. Same verification, same ledger, and the gateway is a
-remote MCP server, so it also works where only a URL can be configured (ChatGPT connectors, the OpenAI
-Responses API `mcp` tool, Claude connectors).
+gateway URL; the client calls it with an Agent Trust API key in the `Authorization` header. Same verification,
+same ledger, nothing installed. Any client that can send a header works today, for example the OpenAI
+Responses API's hosted `mcp` tool:
+
+```python
+from openai import OpenAI
+client = OpenAI()
+resp = client.responses.create(
+    model="gpt-5",
+    tools=[{ "type": "mcp", "server_label": "github-via-agent-trust",
+             "server_url": "https://mnki.com/api/gateway/mcp/<integration id>",
+             "headers": { "Authorization": f"Bearer {os.environ['MNKI_API_KEY']}" },
+             "require_approval": "never" }],
+    input="Open a pull request that bumps the dependency.",
+)
+```
+
+The ChatGPT connector directory, Claude connectors and Smithery require OAuth sign-in on the server instead of
+a header; that is planned for the gateway and will be announced here.
 
 ## Frameworks
 
@@ -144,6 +160,7 @@ g = Guard(AgentTrustClient("https://mnki.com", api_key=os.environ["MNKI_API_KEY"
 
 from mnki.adapters.openai_agents import guard_tools   # Agent(tools=guard_tools(g, [refund]))
 from mnki.adapters.langchain import guard_tools       # create_react_agent(model, guard_tools(g, [refund]))
+from langchain_mnki import guard_tools                # the same, as the `pip install langchain-mnki` partner package
 from mnki.adapters.crewai import guard_tools          # Agent(tools=guard_tools(g, [refund_tool]))
 from mnki.adapters.pydantic_ai import guard_tool      # @agent.tool_plain  @guard_tool(g)  def refund(...): ...
 ```

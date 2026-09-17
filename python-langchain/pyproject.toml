@@ -1,0 +1,22 @@
+[project]
+name = "langchain-mnki"
+version = "0.1.4"
+description = "LangChain / LangGraph integration for mnki (Agent Trust): guard tools so every call is verified against delegated authority, with evidence, before it runs."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+dependencies = ["mnki>=0.1.4", "langchain-core>=0.3"]
+keywords = ["langchain", "langgraph", "ai-agents", "agent-security", "authorization", "mnki", "agent-trust"]
+classifiers = ["License :: OSI Approved :: Apache Software License", "Programming Language :: Python :: 3", "Topic :: Security", "Framework :: LangChain"]
+
+[project.urls]
+Homepage = "https://mnki.com/docs/integrations"
+Documentation = "https://mnki.com/docs/compatibility"
+Repository = "https://github.com/MNKIAgentOS/agent-trust"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["langchain_mnki"]
