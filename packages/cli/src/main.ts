@@ -9,8 +9,11 @@
  *   mnki verify --agent <id> --action purchase.create [--resource r] [--amount 3200 --currency EUR] [--sign] [--local [--world file]]
  *   mnki policy test <policy.json> --cases <cases.json> · mnki policy explain <decision.json | --last>
  *   mnki inspect <agent>
+ *   mnki passport publish|unpublish <agent-id>   (admin key; the organisation's opt-in in Settings → Security decides whether it is served)
  *   mnki delegate --issuer principal:<id>|agent:<id> --to <agent> --cap "purchase.create=supplier:*;max_value=5000" [--parent <id>] [--expires 24h]
  *   mnki attest <decision_id>
+ *   mnki access list · mnki access ops <connection> · mnki access run --agent <id> --connection <con_…> --op refund.create --param charge=ch_1 --param amount=42000 [--wait]
+ *   mnki access request --agent <id> --connection <con_…> --op customer.get [--for 24h] --reason "…" · mnki access status <request id>
  *   mnki revoke agent|credential|delegation|api_key|policy_version <id> --reason "…"   (admin key; immediate)
  *   mnki scan [--register] [--watch [--interval 300]] [--json]
  *   mnki protect --client claude-desktop|claude-code|cursor|windsurf|vscode|project --server <name> --agent <id> [--mode observe|warn|require_approval|enforce] [--apply]
@@ -33,6 +36,7 @@ import { configDir, configPath, loadConfig as load, saveConfig as save, type Con
 import { track } from "./telemetry";
 import { runDemo } from "./demo";
 import { policyTest, explainFile, formatExplanation, lastDecisionPath, type PolicyCase } from "./policy";
+import { setPassport, formatPassportResult, publishHint } from "./passport";
 import { localVerify, demoWorld, explain, type LocalWorld } from "mnki-sdk";
 
 const need = (): Config => { const c = load(); if (!c) { console.error("Not initialised. Run: mnki init --url <console url> --key <api key>"); process.exit(2); } return c; };
@@ -84,7 +88,7 @@ When you want a real console: mnki init --url https://mnki.com --key at_…`); r
           if (!values.name) throw new Error("usage: mnki identity create --name <name> [--alg ES256|EdDSA] [--risk low|medium|high|critical] [--owner <principal id>]");
           const r = await client(c).agents.enrol({ name: values.name, riskTier: values.risk as "low", issuer: values.issuer, ownerPrincipalId: values.owner }, values.alg as "ES256");
           c.identities[r.agentId] = await r.identity.export(); save(c);
-          console.log(`Agent registered\n  id         ${r.agentId}\n  stable id  ${r.stableId}\n  key        ${r.identity.alg} kid=${r.identity.kid} (private key stored in ${configPath()})\nNext: delegate authority to it, then \`mnki verify --agent ${r.agentId} --action <action> --sign\`.`); return;
+          console.log(`Agent registered\n  id         ${r.agentId}\n  stable id  ${r.stableId}\n  key        ${r.identity.alg} kid=${r.identity.kid} (private key stored in ${configPath()})\nNext: delegate authority to it, then \`mnki verify --agent ${r.agentId} --action <action> --sign\`.\n${publishHint(r.agentId)}`); return;
         }
         if (sub === "list") { for (const [id, e] of Object.entries(c.identities)) console.log(`${id}\t${e.alg}\tkid=${e.kid}`); return; }
         throw new Error("usage: mnki identity create|list");
@@ -124,6 +128,13 @@ When you want a real console: mnki init --url https://mnki.com --key at_…`); r
         for (const cp of caps) console.log(`    ${cp.action.padEnd(28)} ${cp.resource}${cp.constraints ? "  " + Object.entries(cp.constraints).map(([k, v]) => `${k}=${Array.isArray(v) ? v.join("|") : v}`).join(" ") : ""}`);
         return;
       }
+      case "passport": {
+        const c = need(); const sub = rest[0]; const id = rest[1];
+        if ((sub !== "publish" && sub !== "unpublish") || !id) throw new Error("usage: mnki passport publish|unpublish <agent id> [--json]");
+        const r = await setPassport(c, id, sub === "publish");
+        if (rest.includes("--json")) return out(r);
+        console.log(formatPassportResult(id, sub === "publish", r)); return;
+      }
       case "delegate": {
         const c = need();
         const { values } = parseArgs({ args: rest, options: { issuer: { type: "string" }, to: { type: "string" }, cap: { type: "string", multiple: true }, parent: { type: "string" }, expires: { type: "string" }, task: { type: "string" } } });
@@ -138,6 +149,36 @@ When you want a real console: mnki init --url https://mnki.com --key at_…`); r
         const c = need(); const id = rest[0]; if (!id) throw new Error("usage: mnki attest <decision id> [--ttl 600]");
         const r = await client(c).attestations.issue(id, { ttlSeconds: rest.includes("--ttl") ? Number(rest[rest.indexOf("--ttl") + 1]) : undefined });
         console.log(`Attestation ${r.id} (expires ${r.expires_at})\n${r.token}`); return;
+      }
+      case "access": {
+        const c = need(); const sub = rest[0]; const cl = client(c);
+        if (sub === "list") { const r = await cl.connections.list(); if (rest.includes("--json")) return out(r); if (!r.ready) console.log("Access broker not configured on this deployment (TOOL_ENC_KEY)."); for (const x of r.items) console.log(`  ${x.id}  ${x.provider.padEnd(9)} ${x.status.padEnd(15)} ${x.name}  [${x.allowed_operations.join(", ")}]`); if (!r.items.length) console.log("No connections. Console → Access → Connect a system."); return; }
+        if (sub === "ops") { const id = rest[1]; if (!id) throw new Error("usage: mnki access ops <connection id>"); const r = await cl.connections.operations(id); if (rest.includes("--json")) return out(r); for (const o of r.items) console.log(`  ${o.enabled ? "●" : "○"} ${o.id.padEnd(24)} ${o.method.padEnd(6)} ${o.risk.padEnd(8)} ${o.title}`); return; }
+        if (sub === "status") { const id = rest[1]; if (!id) throw new Error("usage: mnki access status <request id>"); return out(await cl.accessRequests.status(id)); }
+        const { values } = parseArgs({ args: rest.slice(1), options: { agent: { type: "string" }, connection: { type: "string" }, op: { type: "string", multiple: true }, param: { type: "string", multiple: true }, for: { type: "string" }, reason: { type: "string" }, wait: { type: "boolean" }, mint: { type: "boolean" }, sign: { type: "boolean" }, json: { type: "boolean" } } });
+        if (!values.agent || !values.connection || !values.op?.length) throw new Error('usage: mnki access run|request --agent <id> --connection <con_…> --op <operation> [--param k=v]… [--wait] [--mint] [--sign] | [--for 24h --reason "…"]');
+        if (sub === "request") {
+          const seconds = values.for ? Math.round((Date.parse(expiresIso(values.for) ?? "") - Date.now()) / 1000) : 86400;
+          const r = await cl.accessRequests.create({ agent: values.agent, connection: values.connection, operations: values.op, duration_seconds: seconds, reason: values.reason ?? "requested from the CLI" });
+          if (values.json) return out(r); console.log(`Access request ${r.id} is ${r.status} (expires ${r.expires_at}). A person approves it in the console; poll with \`mnki access status ${r.id}\`.`); return;
+        }
+        if (sub !== "run") throw new Error("usage: mnki access list|ops|run|request|status …");
+        const params: Record<string, string | number | boolean> = {};
+        for (const kv of values.param ?? []) { const i = kv.indexOf("="); if (i < 0) throw new Error(`--param expects k=v, got ${kv}`); const k = kv.slice(0, i), v = kv.slice(i + 1); params[k] = v === "true" ? true : v === "false" ? false : /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : v; }
+        const identity = values.sign ? (c.identities[values.agent] ? await AgentIdentity.import(c.identities[values.agent]) : (() => { throw new Error(`no local identity for ${values.agent}`); })()) : undefined;
+        const input = { agent: values.agent, connection: values.connection, operation: values.op[0], params };
+        if (values.mint) { const r = await cl.grants.mint(input); if (values.json) return out(r); console.log(`Grant ${r.grant.id} (${r.grant.kind}, ${r.grant.status})`); if (r.permit) console.log(`Permit for ${r.permit.audience}, expires ${r.permit.expires_at}:\n${r.permit.token}`); if (r.result) console.log(JSON.stringify(r.result.body, null, 2)); return; }
+        try {
+          const r = values.wait ? await cl.grants.run(input, { identity }) : await cl.grants.execute(input, { identity });
+          if (values.json) return out(r);
+          if (r.status === "approval_required") { console.log(`Approval pending: ${r.approval_id} (decision ${r.decision.decision_id}). Resend with --wait, or later: mnki access run … --param approval_id=${r.approval_id}`); process.exitCode = 1; return; }
+          console.log(`Grant ${r.grant.id}: ${r.grant.status}  (upstream ${r.result.status}${r.result.request_id ? ` · ${r.result.request_id}` : ""} · decision ${r.decision.decision_id})`);
+          for (const e of r.decision.evidence as { status: string; title: string; detail?: string }[]) console.log(`  ${mark[e.status as keyof typeof mark] ?? "•"} ${e.title}${e.detail ? `  — ${e.detail}` : ""}`);
+          console.log(JSON.stringify(r.result.body, null, 2)); if (!r.result.ok) process.exitCode = 1; return;
+        } catch (e) {
+          if (e instanceof AgentTrustError && e.status === 403 && e.detail && typeof e.detail === "object") { const d = e.detail as { decision?: { reasons?: string[]; evidence?: { status: string; title: string; detail?: string }[] }; access_request_hint?: unknown }; console.log(`Denied: ${(d.decision?.reasons ?? []).join(", ")}`); for (const ev of d.decision?.evidence ?? []) console.log(`  ${mark[ev.status as keyof typeof mark] ?? "•"} ${ev.title}${ev.detail ? `  — ${ev.detail}` : ""}`); if (d.access_request_hint) console.log(`Ask for access: mnki access request --agent ${values.agent} --connection ${values.connection} --op ${values.op[0]} --reason "…"`); process.exitCode = 1; return; }
+          throw e;
+        }
       }
       case "scan": {
         const register = rest.includes("--register");
@@ -248,7 +289,7 @@ When you want a real console: mnki init --url https://mnki.com --key at_…`); r
         return;
       }
       default:
-        console.log("mnki <demo|init|identity|verify|policy|inspect|delegate|attest|revoke|scan|protect|conformance|telemetry> — see packages/cli/src/main.ts for usage"); process.exitCode = cmd ? 2 : 0;
+        console.log("mnki <demo|init|identity|verify|policy|inspect|passport|delegate|attest|revoke|scan|protect|conformance|telemetry> — see packages/cli/src/main.ts for usage"); process.exitCode = cmd ? 2 : 0;
     }
   } catch (e) {
     if (e instanceof AgentTrustError) console.error(`API error ${e.status} ${e.code}${e.detail ? ` — ${typeof e.detail === "string" ? e.detail : JSON.stringify(e.detail)}` : ""}`);

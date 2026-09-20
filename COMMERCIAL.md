@@ -36,10 +36,11 @@ The control plane is where an organisation governs many agents, many people and 
 | Identity-provider sync, trust domains | — | ✓ | ✓ |
 | SSO + SCIM | — | add-on | ✓ |
 | Federation between organisations, runtime attestation | — | — | ✓ |
+| Access broker: connections, single-use grants, access requests | 1 connection | 3 (Individual) / 25 (Team) + per-connection add-on | unlimited, vault credential providers, signing |
 | Self-hosted image (Postgres/Redis/S3), licence, support SLA | — | — | ✓ |
 
-The hosted MCP gateway, the console, the admin portal, billing, SSO/SCIM, federation, runtime attestation
-analytics and the self-hosted control-plane image are proprietary and are not in this repository.
+The hosted MCP gateway, the access broker (credential custody and execution), the console, the admin portal, billing, SSO/SCIM, federation, runtime attestation
+analytics and the self-hosted control-plane image are proprietary and are not in this repository. The grant format itself (profile §17), the SDK and CLI clients for it, and offline verification of a grant permit are open.
 
 ## What will not change
 

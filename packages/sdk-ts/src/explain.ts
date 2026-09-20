@@ -24,8 +24,9 @@ export function explain(d: DecisionLike): Explanation {
   const policy = reasons.map((r) => /^policy:([^:]+):(allow|deny|require_approval)$/.exec(r)).find(Boolean);
   const matched_rule = policy ? { id: policy[1], effect: policy[2] } : null;
   const capStep = step(d, "capability"), conStep = step(d, "constraints"), delStep = step(d, "delegation");
-  const missing_capability = reasons.includes("capability_missing") ? (capStep?.title.replace(/^Capability /, "").replace(/ not granted$/, "") ?? "capability") : null;
-  const failing_condition = reasons.includes("constraint_violated") || reasons.includes("budget_exceeded") ? (conStep?.detail ?? conStep?.title ?? "constraint") : null;
+  // Prefer the machine-readable `params` (servers that set `code`); fall back to parsing the English title for older servers.
+  const missing_capability = reasons.includes("capability_missing") ? (typeof capStep?.params?.action === "string" && capStep.code ? capStep.params.action : capStep?.title.replace(/^Capability /, "").replace(/ not granted$/, "") ?? "capability") : null;
+  const failing_condition = reasons.includes("constraint_violated") || reasons.includes("budget_exceeded") ? (conStep?.code === "constraints.violated" && typeof conStep.params?.limits === "string" ? conStep.params.limits : conStep?.code === "constraints.budget_exhausted" && conStep.params && typeof conStep.params.spent === "number" ? `${conStep.params.spent} of ${conStep.params.total} ${conStep.params.currency ?? ""} already spent; ${conStep.params.left} left`.trim() : conStep?.detail ?? conStep?.title ?? "constraint") : null;
   const limiting_delegation = (conStep?.refs?.[0] ?? delStep?.refs?.[0]) ?? (d.delegation?.chain?.length ? d.delegation.chain[d.delegation.chain.length - 1] : null);
   const failing = d.evidence.find((e) => e.status === "fail"); const blocking_step = failing?.step ?? (d.decision === "REQUIRE_APPROVAL" ? "policy" : null);
   const what: string[] = [];

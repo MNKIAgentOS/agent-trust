@@ -1,0 +1,122 @@
+{
+  "id": "L3-09",
+  "level": 3,
+  "title": "single-use attestation is refused where no consumption store exists (v0.2)",
+  "now": "2026-09-14T12:00:00.000Z",
+  "keys": {
+    "org_acme": {
+      "org-1": {
+        "kty": "EC",
+        "x": "UxSHvtC_SsPUdPy93zihF9l709ussPfJ1582VocCY_s",
+        "y": "OwxYocj2RqIFMJjvSrX4Tbm82Rofbkzg408OxNJIDV4",
+        "crv": "P-256",
+        "kid": "org-1"
+      }
+    },
+    "org_globex": {
+      "peer-1": {
+        "alg": "Ed25519",
+        "crv": "Ed25519",
+        "x": "DjpoxdH1wE3AgAN9xdMcTfAt4pHsietWcp4oUZHAHkg",
+        "kty": "OKP",
+        "kid": "peer-1"
+      }
+    }
+  },
+  "world": {
+    "agent": {
+      "id": "agt_child",
+      "stable_id": "spiffe://acme/agent/child",
+      "lifecycle": "active",
+      "risk_tier": "low",
+      "owner_principal_id": "prn_alice",
+      "labels": {}
+    },
+    "credential": {
+      "id": "crd_1",
+      "kind": "jwt_svid",
+      "status": "active",
+      "not_after": "2027-03-15T00:00:00Z"
+    },
+    "principals": [
+      {
+        "id": "prn_alice",
+        "display_name": "Alice",
+        "kind": "user"
+      }
+    ],
+    "delegations": [
+      {
+        "id": "dlg_root",
+        "parent_id": null,
+        "subject_agent_id": "agt_parent",
+        "status": "active",
+        "not_after": "2027-01-01T00:00:00Z",
+        "capabilities": [
+          {
+            "action": "purchase.create",
+            "resource": "supplier:*",
+            "constraints": {
+              "max_value": 5000,
+              "currency": "EUR",
+              "region": [
+                "EU"
+              ]
+            }
+          },
+          {
+            "action": "supplier.search",
+            "resource": "supplier:*"
+          }
+        ]
+      },
+      {
+        "id": "dlg_child",
+        "parent_id": "dlg_root",
+        "subject_agent_id": "agt_child",
+        "status": "active",
+        "not_after": null,
+        "capabilities": [
+          {
+            "action": "purchase.create",
+            "resource": "supplier:1*",
+            "constraints": {
+              "max_value": 1200,
+              "currency": "EUR",
+              "region": [
+                "EU"
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "capabilities": [],
+    "revoked": [],
+    "attestations": [],
+    "policy": null,
+    "peers": []
+  },
+  "request_hash": "rh_single_1",
+  "request": {
+    "agent": "agt_child",
+    "action": "purchase.create",
+    "resource": "supplier:123",
+    "amount": 900,
+    "currency": "EUR",
+    "context": {
+      "region": "EU"
+    },
+    "attestation": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImFnZW50LXRydXN0LWF0dGVzdGF0aW9uK2p3dCIsImtpZCI6Im9yZy0xIn0.eyJpc3MiOiJvcmdfYWNtZSIsInN1YiI6ImFndF9jaGlsZCIsImp0aSI6ImFhdF9zMSIsImlhdCI6MTc4OTM4NzIwMCwiZXhwIjoxNzg5Mzg3ODAwLCJhdHAiOnsidiI6MSwicHJpbmNpcGFsIjoicHJuX2FsaWNlIiwib3JnYW5pemF0aW9uIjoib3JnX2FjbWUiLCJhY3Rpb24iOiJwdXJjaGFzZS5jcmVhdGUiLCJyZXNvdXJjZSI6InN1cHBsaWVyOjEyMyIsImRlY2lzaW9uIjoiQUxMT1ciLCJjYXBhYmlsaXRpZXMiOlt7ImFjdGlvbiI6InB1cmNoYXNlLmNyZWF0ZSIsInJlc291cmNlIjoic3VwcGxpZXI6MSoiLCJjb25zdHJhaW50cyI6eyJtYXhfdmFsdWUiOjEyMDAsImN1cnJlbmN5IjoiRVVSIiwicmVnaW9uIjpbIkVVIl19fV0sImRlbGVnYXRpb25fY2hhaW4iOlsiZGxnX3Jvb3QiLCJkbGdfY2hpbGQiXSwiaHVtYW5fYXBwcm92YWwiOm51bGwsImRlY2lzaW9uX2lkIjoiZGVjXzEiLCJyZXF1ZXN0X2hhc2giOiJyaF9zaW5nbGVfMSIsInBvbGljeV92ZXJzaW9uIjoicHZfMSIsInVzZSI6InNpbmdsZSJ9fQ.WzXjyP3uIctHVKBPREGO3vxn-Bu6-CuHzzaZl9LnhAW4d2yGJvXc9KnLt_0JhYu7B-rF1g3CuD7rFzlLr4imfA"
+  },
+  "expect": {
+    "decision": "DENY",
+    "reasons_include": [
+      "attestation_invalid:no_consume_store"
+    ],
+    "evidence": {
+      "attestation_token": "pass",
+      "single_use": "fail"
+    }
+  }
+}

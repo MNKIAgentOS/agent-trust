@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { generateAgentKey, issueAttestation } from "mnki-verifier";
 import { AgentIdentity, createGuard, decodeJwt, type LocalWorld } from "../src/index";
-import { signTaskRequest, verifyBeforeAccept, readAgentCard, refusalToJsonRpc, AGENT_TRUST_EXTENSION, type AgentCard } from "../src/adapters/a2a";
+import { signTaskRequest, verifyBeforeAccept, readAgentCard, refusalToJsonRpc, memoryConsumedStore, AGENT_TRUST_EXTENSION, type AgentCard } from "../src/adapters/a2a";
 
 /** Two organisations, both local: Acme's invoice agent asks Globex's quote agent for a quote. */
 const NOW = new Date("2026-09-16T12:00:00Z"); const y = "2027-09-16T00:00:00Z";
@@ -13,10 +13,12 @@ describe("A2A: sign on the caller side, verify before accept on the receiver sid
   const caller = await AgentIdentity.create("agt_invoice", "ES256", "k-invoice");
   const issue = (over: Partial<Parameters<typeof issueAttestation>[0]["claims"]> = {}, sub = "agt_invoice", orgId = "org_acme") => issueAttestation({ privateKey: acmeKey.privateKey, alg: "ES256", kid: "org-acme-1", orgId, attestationId: "aat_1", agentId: sub, ttlSeconds: 600, now: NOW, claims: { v: 1, principal: "prn_ar", organization: orgId, action: "a2a:quote.create", resource: null, decision: "ALLOW", capabilities: [{ action: "a2a:quote.create", resource: "*" }], delegation_chain: ["dlg_a"], human_approval: null, decision_id: "dec_1", request_hash: null, policy_version: null, ...over } });
   const card: AgentCard = { name: "invoice-agent", provider: { organization: "Acme" }, capabilities: { extensions: [{ uri: AGENT_TRUST_EXTENSION, params: { agent_id: "agt_invoice", stable_id: "spiffe://acme/agent/invoice", public_id: "pub_acmeinvoice0000000000", organization: "org_acme", organization_name: "Acme", jwks_url: "https://acme.test/api/v1/orgs/org_acme/jwks", passport_url: "https://acme.test/agent/pub_acmeinvoice0000000000" } }] }, skills: [{ id: "invoice.read" }] };
-  let passportState = "verified"; const fetched: string[] = [];
+  let passportState = "verified"; let attStatus: string | number = "active"; const fetched: string[] = [];
+  const cardWithStatus: AgentCard = { ...card, capabilities: { extensions: [{ uri: AGENT_TRUST_EXTENSION, params: { ...(card.capabilities!.extensions![0].params as object), attestation_status_url: "https://acme.test/api/v1/orgs/org_acme/status/attestation" } }] } };
   const f = (async (url: string) => { fetched.push(url);
     if (url.endsWith("/jwks")) return new Response(JSON.stringify(jwks));
     if (url.includes("/agent-card")) return new Response(JSON.stringify(card));
+    if (url.includes("/status/attestation/")) return typeof attStatus === "number" ? new Response("down", { status: attStatus }) : new Response(JSON.stringify({ jti: "aat_1", status: attStatus, ttl_hint: 60 }));
     if (url.includes("/passport")) return new Response(JSON.stringify({ public_id: "pub_acmeinvoice0000000000", state: passportState, lifecycle: passportState === "revoked" ? "revoked" : "active", organization: { name: "Acme", verified: true } }));
     return new Response("nope", { status: 404 }); }) as unknown as typeof fetch;
   const guard = () => createGuard({ world: globexWorld, agent: "agt_quote", actionPrefix: "a2a:", now: () => NOW });
@@ -34,6 +36,8 @@ describe("A2A: sign on the caller side, verify before accept on the receiver sid
     expect(out.trust.caller).toMatchObject({ agent_id: "agt_invoice", organization: "Acme", public_id: "pub_acmeinvoice0000000000" });
     expect(out.trust.attestation).toMatchObject({ present: true, valid: true, jti: "aat_1", action: "a2a:quote.create", principal: "prn_ar", organization: "org_acme", delegation_chain_length: 1, human_approved: false });
     expect(out.trust.standing).toMatchObject({ checked: true, state: "verified", organization_verified: true }); expect(out.trust.proof.present).toBe(true);
+    // §15: the receiver executes only with a verified attestation, so its own decision carries the attested effect path.
+    expect(out.decision.evidence.find((e) => e.step === "enforcement")).toMatchObject({ status: "pass", code: "enforcement.attested" });
     expect(out.decision.decision).toBe("ALLOW"); expect(fetched.some((u) => u.endsWith("/api/v1/agents/pub/pub_acmeinvoice0000000000/passport"))).toBe(true);
     // Receiver policy still applies: a €7,000 quote needs Globex's approval regardless of Acme's attestation.
     const big = await verifyBeforeAccept(createGuard({ world: globexWorld, agent: "agt_quote", actionPrefix: "a2a:", now: () => NOW, onApproval: "throw" }), { skill: "quote.create", params: { amount: 7000, currency: "EUR" }, headers: r.headers, callerCard: card }, { fetch: f, now: () => NOW });
@@ -53,5 +57,29 @@ describe("A2A: sign on the caller side, verify before accept on the receiver sid
     const denied = await verifyBeforeAccept(guard(), { skill: "invoice.delete", headers, callerCard: card }, { fetch: f, now: () => NOW, expectedAction: () => null });
     expect(denied).toMatchObject({ accept: false, reason: "denied", decision: { reasons: expect.arrayContaining(["capability_missing"]) } }); expect(refusalToJsonRpc("t1", denied as never).error.code).toBe(-32003);
     expect(JSON.stringify(denied)).not.toContain("evidence");
+  });
+  it("v0.2 §9.2: a single-use attestation is accepted once per receiver store and refused on replay", async () => {
+    const att = await issue({ use: "single" });
+    const r = await signTaskRequest(caller, { url: "https://globex.test/a2a", body: {}, attestation: att, cardUrl: "https://acme.test/api/v1/agents/agt_invoice/agent-card" });
+    const store = memoryConsumedStore();
+    const first = await verifyBeforeAccept(guard(), { skill: "quote.create", params: { amount: 1200, currency: "EUR" }, headers: r.headers }, { fetch: f, now: () => NOW, consumed: store });
+    expect(first.accept).toBe(true); if (!first.accept) return; expect(first.trust.attestation).toMatchObject({ use: "single", consumed: true });
+    const replay = await verifyBeforeAccept(guard(), { skill: "quote.create", params: { amount: 1200, currency: "EUR" }, headers: r.headers }, { fetch: f, now: () => NOW, consumed: store });
+    expect(replay).toMatchObject({ accept: false, reason: "attestation_consumed" }); expect(refusalToJsonRpc(1, replay as never).error.code).toBe(-32003);
+  });
+  it("v0.2 §12.1: when the caller's card advertises a status endpoint the receiver asks it — revoked refuses, unreachable refuses unless a stale window allows it", async () => {
+    const att = await issue(); const headers = (await signTaskRequest(caller, { url: "https://globex.test/a2a", body: {}, attestation: att })).headers;
+    const task = { skill: "quote.create", params: { amount: 1200, currency: "EUR" }, headers, callerCard: cardWithStatus };
+    attStatus = "active"; const ok = await verifyBeforeAccept(guard(), task, { fetch: f, now: () => NOW });
+    expect(ok.accept).toBe(true); expect(ok.trust.revocation).toEqual({ checked: true, status: "active" });
+    attStatus = "revoked"; const rev = await verifyBeforeAccept(guard(), task, { fetch: f, now: () => NOW });
+    expect(rev).toMatchObject({ accept: false, reason: "attestation_revoked" }); expect(refusalToJsonRpc(1, rev as never).error.code).toBe(-32003);
+    attStatus = 503; const down = await verifyBeforeAccept(guard(), task, { fetch: f, now: () => NOW });
+    expect(down).toMatchObject({ accept: false, reason: "attestation_status_unavailable" }); expect(refusalToJsonRpc(1, down as never).error.code).toBe(-32006);
+    const stale = await verifyBeforeAccept(guard(), task, { fetch: f, now: () => NOW, staleOkSeconds: 900 });
+    expect(stale.accept).toBe(true); expect(stale.trust.revocation).toMatchObject({ checked: false, status: "unreachable" });
+    attStatus = "active";
+    const off = await verifyBeforeAccept(guard(), { ...task, callerCard: card }, { fetch: f, now: () => NOW });
+    expect(off.accept).toBe(true); expect(off.trust.revocation?.checked).toBe(false);
   });
 });

@@ -1,0 +1,125 @@
+{
+  "id": "V17",
+  "title": "effect path declared as none: a direct path to the effector may exist (v0.2)",
+  "now": "2026-09-14T12:00:00Z",
+  "world": {
+    "agent": {
+      "id": "agt_1",
+      "stable_id": "spiffe://acme/agent/procurement-7821",
+      "lifecycle": "active",
+      "risk_tier": "low",
+      "owner_principal_id": "prn_1",
+      "labels": {
+        "department": "Finance"
+      }
+    },
+    "credential": {
+      "id": "crd_1",
+      "kind": "jwt_svid",
+      "status": "active",
+      "not_after": "2027-03-15T00:00:00Z"
+    },
+    "principals": [
+      {
+        "id": "prn_1",
+        "display_name": "Maria Chen",
+        "kind": "user"
+      }
+    ],
+    "delegations": [
+      {
+        "id": "dlg_root",
+        "parent_id": null,
+        "subject_agent_id": "agt_1",
+        "status": "active",
+        "not_after": "2027-01-01T00:00:00Z",
+        "capabilities": [
+          {
+            "action": "purchase.create",
+            "resource": "supplier:*",
+            "constraints": {
+              "max_value": 5000,
+              "currency": "EUR",
+              "region": [
+                "EU"
+              ]
+            }
+          },
+          {
+            "action": "supplier.search",
+            "resource": "supplier:*"
+          }
+        ]
+      }
+    ],
+    "capabilities": [],
+    "revoked": [],
+    "attestations": [],
+    "policy": {
+      "version_id": "pv_17",
+      "hash": "h17",
+      "doc": {
+        "version": 1,
+        "rules": [
+          {
+            "id": "procurement-approval",
+            "match": {
+              "action": "purchase.create"
+            },
+            "conditions": [
+              {
+                "kind": "amount_gt",
+                "value": 3000
+              }
+            ],
+            "effect": "require_approval"
+          },
+          {
+            "id": "no-refunds-out-of-hours",
+            "match": {
+              "action": "stripe.refund"
+            },
+            "conditions": [
+              {
+                "kind": "time_window",
+                "start": "18:00",
+                "end": "08:00"
+              }
+            ],
+            "effect": "deny"
+          }
+        ]
+      }
+    }
+  },
+  "request": {
+    "agent": "agt_1",
+    "action": "purchase.create",
+    "resource": "supplier:123",
+    "context": {
+      "region": "EU",
+      "effect_path": "none"
+    },
+    "amount": 2450,
+    "currency": "EUR"
+  },
+  "expect": {
+    "decision": "ALLOW",
+    "reasons_include": [
+      "identity_verified",
+      "authority_valid"
+    ],
+    "evidence": {
+      "identity": "pass",
+      "credential": "pass",
+      "principal": "pass",
+      "delegation": "pass",
+      "capability": "pass",
+      "constraints": "pass",
+      "revocation": "pass",
+      "attestation": "skipped",
+      "policy": "pass",
+      "enforcement": "warn"
+    }
+  }
+}

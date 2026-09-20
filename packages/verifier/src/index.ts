@@ -4,6 +4,7 @@ export * from "./delegation/attenuate";
 export * from "./delegation/chain";
 export * from "./policy/schema";
 export * from "./policy/evaluate";
+export * from "./evidence-codes";
 export * from "./pipeline";
 export * from "./proof";
 export * from "./credential";

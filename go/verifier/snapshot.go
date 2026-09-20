@@ -72,6 +72,7 @@ type Snapshot struct {
 		EntityID   string `json:"entity_id"`
 		Name       string `json:"name"`
 		TrustLevel int    `json:"trust_level"`
+		StaleOk    int    `json:"stale_ok_seconds"`
 	} `json:"peers"`
 }
 
@@ -307,7 +308,7 @@ func SnapshotDeps(s Snapshot) Deps {
 		GetFederatedIssuer: func(iss string) *FederatedIssuer {
 			for _, p := range s.Peers {
 				if p.EntityID == iss {
-					return &FederatedIssuer{Name: p.Name, TrustLevel: p.TrustLevel}
+					return &FederatedIssuer{Name: p.Name, TrustLevel: p.TrustLevel, StaleOkSeconds: p.StaleOk}
 				}
 			}
 			return nil

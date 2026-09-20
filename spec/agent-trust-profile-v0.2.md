@@ -1,4 +1,6 @@
-# Agent Trust Profile v0.1
+# Agent Trust Profile v0.2
+
+> Sections marked **(v0.2)** are additions to v0.1: §9.2 single-use attestations, §12.1 cross-organization revocation, §13.1 entity configuration endpoints, §15 enforcement points and effect paths. Every v0.1 object still verifies unchanged; see §16. **§17 (v0.3 draft)** adds grants and credential brokering: the audience rule and covering-delegation selection are implemented and vectored; the grant claim is normative once v0.3 ships. Every v0.1 object keeps verifying; the new claims default to the v0.1 behaviour when absent.
 
 Status: experimental · Licence: Apache-2.0 · Reference: `packages/verifier` · Vectors: `conformance/vectors`
 
@@ -33,6 +35,7 @@ Organization ─ operates ─▶ Agent ─ represents ─▶ Principal
 | **Effective authority** | What survives the whole chain: the intersection, never the union. |
 | **Decision** | `ALLOW`, `DENY` or `REQUIRE_APPROVAL`, derived from evidence rows, never from a score. |
 | **Evidence** | `{ step, status: pass|warn|fail|skipped, title, detail?, refs? }`, one row per check. |
+| **Grant** (v0.3 draft) | A single-use authorization attestation addressed to one effector (`aud`) for one operation on one connected system, consumed before the effect. |
 
 ## 3. Identity
 
@@ -133,6 +136,20 @@ JWS `typ: "agent-trust-attestation+jwt"`, issued by the organization from an `AL
 
 A relying party MUST verify signature (org JWKS), `typ`, `exp`, that `sub` is the calling agent, that `atp.action` equals the requested action and `atp.resource` (when present) contains the requested resource, and SHOULD check revocation by `jti`. Outcomes: `attestation_valid` / `attestation_invalid:<reason>`.
 
+### 9.2 Single-use attestations (v0.2)
+
+`atp.use ∈ { "single", "multi" }`; absent means `multi` (every v0.1 token). Issuers MUST set `single` on an
+attestation derived from a `REQUIRE_APPROVAL` decision (an approval permits one act) and SHOULD set it whenever
+`atp.request_hash` is present. A relying party that accepts a `single` attestation MUST atomically record its
+`jti` as consumed before producing the effect and MUST refuse every later presentation with
+`attestation_invalid:consumed`; the consumed set is kept until `exp`. Where no consumption store exists (an edge
+snapshot, a stateless verifier) a `single` attestation MUST be refused (`attestation_invalid:no_consume_store`).
+When the verifier knows the hash of the request being executed (the verify request without its `attestation`
+field, canonicalised and SHA-256), a `single` attestation whose `atp.request_hash` differs MUST be refused
+(`attestation_invalid:request_hash`). Consumption happens only when the decision is `ALLOW`, so a request refused
+for another reason does not spend the permit. Evidence step `single_use`: `single_use.recorded` (pass),
+`single_use.consumed` / `single_use.no_store` (fail); reason `attestation_consumed` on success.
+
 ## 10. Verification algorithm
 
 Input `VerifyRequest = { agent, action, resource?, principal?, delegation_id?, amount?, currency?, context?, attestation? }` plus optional request binding `{ proof, htm, htu, bodyHash }`. Steps, each producing exactly one evidence row:
@@ -149,10 +166,112 @@ Every consequential event is a CloudEvents-shaped envelope `{ id, source: "agent
 
 Subjects: `agent`, `credential`, `delegation`, `api_key`, `policy_version`, plus attestations by `jti`. A revoked subject yields `revoked` at verification; `GET /v1/status/{subject}` MUST answer from one indexed lookup. Short-lived credentials + explicit status + cached verification is the recommended combination; chain status is honoured on every link.
 
+### 12.1 Cross-organization revocation (v0.2)
+
+An organization that issues attestations for federated use MUST publish a public status endpoint
+`GET {attestation_status_uri}/{jti}` answering `{ jti, status: "active" | "revoked" | "expired" | "unknown", ttl_hint }`
+from one indexed lookup, and MUST advertise it as `attestation_status_uri` in its entity configuration (§13.1) and
+as `attestation_status_url` in its Agent Card extension. A receiver that accepts a peer attestation at trust level 2
+MUST consult the issuer's status for the `jti` before the first acceptance, MAY cache the answer for
+`min(ttl_hint, 60 s)`, and MUST refuse on anything but `active` (`revoked`; evidence `revocation.peer_revoked`).
+When the issuer is unreachable the receiver MUST refuse (`revocation_remote_unreachable`,
+`revocation.peer_unreachable`) unless its federation record allows a stale window (`stale_ok_seconds`) and the
+attestation was issued within it, in which case it accepts with a warning (`revocation.peer_unreachable_stale_ok`).
+A receiver without a status resolver keeps the v0.1 behaviour and says so (`revocation.peer_unchecked`).
+
 ## 13. Trust domains and organization keys
 
 Each organization publishes a JWKS (`/v1/orgs/{id}/jwks`) containing active and retired signing keys with `kid`, `alg`, `use: "sig"`. Retired keys stay published so historic credentials still verify. Cross-organization trust (OpenID Federation entity statements, trust-chain resolution to anchors) is out of scope for v0.1.
 
+### 13.1 Entity configuration endpoints (v0.2)
+
+The entity configuration's `metadata.agent_trust` carries `jwks_uri`, `verify_endpoint`, `status_endpoint`,
+`attestations_endpoint` and, from v0.2, `attestation_status_uri` (§12.1). A peer added from an entity configuration
+without `attestation_status_uri` is treated as unreachable for revocation, so its attestations are refused at trust
+level 2 unless a stale window is configured.
+
 ## 14. Conformance
 
 An implementation conforms when it reproduces the decision, the listed reasons and the per-step evidence statuses of every vector in `conformance/vectors`. Vectors are the executable specification; a change of semantics MUST come with a vector.
+
+## 15. Enforcement points and effect paths (v0.2)
+
+An *effect* is a state change outside the agent (a tool call executed, a message sent, money moved). An
+*enforcement point* is the component that obtains a decision for a request before its effect. An implementation
+conforms to `NO_DIRECT_EFFECT_PATH` when every effect an agent can cause is produced by an *effector* that can
+establish, for that request, an `ALLOW` decision or a `REQUIRE_APPROVAL` decision whose approval was granted.
+Two ways of establishing it are defined:
+
+- **Custody.** The effector accepts requests only from the enforcement point, because the credential that produces
+  the effect is held by the enforcement point and never by the agent (the hosted MCP gateway). Provenance MUST
+  record the `decision_id` on every effect.
+- **Attested.** The effector is a relying party (§9) and executes a request only with an Authorization Attestation
+  whose `aud` names the effector, whose `atp.request_hash` equals the hash of the request being executed, and, for a
+  single-use attestation (§9.2), whose `jti` it has not consumed before (the A2A receiver).
+
+A verification request MAY declare its effect path in `context.effect_path ∈ { "custody", "attested", "none" }`.
+Verifiers MUST emit evidence step `enforcement`: `pass` for `custody` (`enforcement.custody`) or `attested`
+(`enforcement.attested`), `warn` for `none` or absent (`enforcement.none`: a direct path to the effector may
+exist and the decision relies on deployment isolation). A local proxy that shares a machine with the agent
+process declares `none`; it cannot claim custody. The declaration is the caller's statement about its
+deployment, recorded so a reviewer can see, on every decision, whether the effect could have bypassed it.
+
+## 16. Changes since v0.1
+
+v0.2 is additive. Every object a v0.1 implementation produces still verifies: the new claims are optional
+and absent means the v0.1 behaviour, every v0.1 reason code is unchanged, and the A2A extension URI
+`https://mnki.com/agent-trust/profile/v0.1` stays as it is, because it identifies the extension namespace
+rather than the version of this document.
+
+| Section | Addition | New refusals |
+|---|---|---|
+| §9.2 | `atp.use: "single"`, consumed on first acceptance and bound to the request hash | `attestation_invalid:consumed`, `:request_hash`, `:no_consume_store` |
+| §12.1 | Issuers publish an attestation status endpoint; receivers consult it for peer attestations | `revoked`, `revocation_remote_unreachable` |
+| §13.1 | `attestation_status_uri` in the entity configuration | — |
+| §15 | `context.effect_path` and the `enforcement` evidence step | — (a warning, never a refusal) |
+| §17 (draft) | `aud` on attestations is verified when the relying party declares its audience; covering-delegation selection; the `atp.grant` claim | `attestation_invalid:audience` |
+
+Two evidence steps are new, `single_use` and `enforcement`, and one is new on the policy step,
+`policy.approved_by_attestation`: an attestation carrying a human approval for this very request satisfies a
+policy that asks for one, once. A verifier that does not implement §9.2 or §12.1 keeps the v0.1 evidence and
+says so (`revocation.peer_unchecked`), which is why the v0.1 vectors still pass unchanged.
+
+Three implementations pass the level-1 to level-3 vectors including these additions: TypeScript
+(`packages/verifier`), Go (`go/verifier`) and Python (`python/mnki`).
+
+## 17. Grants and credential brokering (v0.3 draft)
+
+An agent that must act on an external system (a payment provider, a code host, a cloud account, any HTTP API)
+SHOULD NOT hold that system's credential. Instead the organization holds a **connection** (the credential, kept
+by the control plane) and the agent asks for a **grant**: a single-use authorization attestation (§9.2) addressed
+to that connection and bound to one operation with one set of parameters.
+
+17.1 **Grant object.** A grant is an attestation with `aud` = the connection identifier, `atp.use = "single"`,
+`atp.request_hash` = the hash of the verify request that produced it, and
+`atp.grant = { connection, operation, params_hash }` where `params_hash` is SHA-256 over the canonical (RFC 8785)
+parameters of the operation. Its capabilities and delegation chain are those of the decision it came from.
+
+17.2 **Audience rule.** A relying party that has an identifier of its own (a broker connection, an effector)
+declares it when verifying, and MUST refuse a presented attestation whose `aud` is absent or does not name it:
+`attestation_invalid:audience`. A relying party that declares no audience ignores `aud`, as in v0.2. `aud` MAY be
+a string or an array of strings.
+
+17.3 **Execution.** The broker verifies the grant (signature, subject, audience, action, resource, request hash,
+consumption), produces the effect with the connection's credential (§15 `custody`) or by minting a
+provider-native credential whose lifetime is no longer than the provider's minimum, and records on the effect the
+`decision_id` and the grant's `jti`. The connection's credential is never returned by any interface, never logged
+and never present in the evidence.
+
+17.4 **Covering delegation.** When several active delegations name the same agent and the request carries no
+delegation identifier, the verifier selects the newest delegation, inside its validity window, whose effective
+authority covers the requested action and resource; only if none does it falls back to the most recent one. A
+narrow, time-boxed delegation issued for an access request therefore never shadows the chain the agent already
+has, and its expiry never breaks it.
+
+17.5 **Access requests.** An agent that lacks a capability MAY ask for it; a person grants it as a delegation with
+`not_after`, from a principal, so the grant is attributable and expires. Nothing in this section changes the
+answer for an agent that does not ask: default deny stands.
+
+Evidence: `attestation_token.audience` and `identity.federated_attestation_audience` (fail). Vectors: L3-20 to
+L3-23 (audience), V18 and V19 (covering delegation).
+

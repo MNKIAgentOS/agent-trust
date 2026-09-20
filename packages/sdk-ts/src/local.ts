@@ -4,7 +4,7 @@
  * `demoWorld()` is the 15-second story: an invoice agent may spend up to €5,000; €47,000 is denied, €420
  * allowed, and anything above €3,000 needs a human.
  */
-import { verify, parseVerifyRequest, type VerifierDeps, type VerifyResult, type VerifyRequest, type Delegation, type CapSet } from "mnki-verifier";
+import { verify, parseVerifyRequest, resourceContains, type VerifierDeps, type VerifyResult, type VerifyRequest, type Delegation, type CapSet } from "mnki-verifier";
 import type { AgentInfo, CredentialInfo, PrincipalInfo, AttestationInfo, ActivePolicy } from "mnki-verifier";
 
 export interface LocalWorld {
@@ -33,6 +33,8 @@ export function depsFromWorld(w: LocalWorld): VerifierDeps {
     getActiveCredential: async () => w.credential ?? null,
     getPrincipal: async (id) => (w.principals ?? []).find((p) => p.id === id) ?? null,
     getLeafDelegation: async (agentId, delegationId) => (dels.find((d) => (delegationId ? d.id === delegationId : d.subject_agent_id === agentId && d.parent_id !== null)) ?? dels.find((d) => d.subject_agent_id === agentId)) ?? null,
+    // §17: among the agent's active delegations, the one whose authority covers the action and resource.
+    getCoveringDelegation: async (agentId, action, resource) => dels.find((d) => d.subject_agent_id === agentId && d.status === "active" && d.capabilities.some((c) => c.action === action && (!resource || resourceContains(c.resource, resource)))) ?? null,
     getDelegationAncestry: async () => dels,
     getAgentCapabilities: async () => w.capabilities ?? [],
     isRevoked: async (_t, id) => revoked.has(id),

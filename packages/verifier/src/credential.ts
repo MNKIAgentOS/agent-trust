@@ -116,8 +116,8 @@ export async function verifyDelegationChain(tokens: string[], resolveKey: KeyRes
 }
 
 // ---------- Agent Authorization Attestation ----------
-export interface AttestationClaims { v: 1; principal: string | null; organization: string; action: string; resource: string | null; decision: "ALLOW" | "REQUIRE_APPROVAL"; capabilities: CapSet; delegation_chain: string[]; human_approval: { required: boolean; approved: boolean; approver: string | null; approval_id: string | null; proof_hash?: string } | null; decision_id: string; request_hash: string | null; policy_version: string | null }
-export interface AttestationJwt { iss: string; sub: string; jti: string; iat: number; exp: number; aud?: string; atp: AttestationClaims }
+export interface AttestationClaims { v: 1; principal: string | null; organization: string; action: string; resource: string | null; decision: "ALLOW" | "REQUIRE_APPROVAL"; /** §9.2 (v0.2): "single" permits one effect; the relying party consumes the jti on first acceptance. Absent = "multi" (v0.1 tokens). */ use?: "single" | "multi"; capabilities: CapSet; delegation_chain: string[]; human_approval: { required: boolean; approved: boolean; approver: string | null; approval_id: string | null; proof_hash?: string } | null; decision_id: string; request_hash: string | null; policy_version: string | null; /** §17 (v0.3 draft): what a brokered grant is for; params_hash = sha256(JCS(params)). */ grant?: { connection: string; operation: string; params_hash: string } }
+export interface AttestationJwt { iss: string; sub: string; jti: string; iat: number; exp: number; /** §17: the effector the permit is for (a broker connection id); a relying party that declares an audience refuses tokens without or with another one. */ aud?: string | string[]; atp: AttestationClaims }
 export interface IssueAttestationInput { privateKey: CryptoKey; alg: ProofAlg; kid: string; orgId: string; attestationId: string; agentId: string; audience?: string | null; ttlSeconds?: number; now?: Date; claims: AttestationClaims }
 
 export async function issueAttestation(i: IssueAttestationInput): Promise<string> {

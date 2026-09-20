@@ -29,9 +29,18 @@ type cryptoVector struct {
 			EntityID   string `json:"entity_id"`
 			Name       string `json:"name"`
 			TrustLevel int    `json:"trust_level"`
+			StaleOk    int    `json:"stale_ok_seconds"`
 		} `json:"peers"`
+		// PeerStatus (v0.2): jti → "active" | "revoked" | "unreachable"; present = the runner offers a peer status resolver (unknown jtis are active).
+		PeerStatus *map[string]string `json:"peer_status"`
+		// Consumed (v0.2): when present, the runner offers a consumption store pre-seeded with these jtis.
+		Consumed *[]string `json:"consumed"`
 	} `json:"world"`
-	Request map[string]any  `json:"request"`
+	// RequestHash (v0.2): passed as Options.RequestHash.
+	RequestHash string          `json:"request_hash"`
+	// Audience (v0.3): passed as Options.Audience.
+	Audience string             `json:"audience"`
+	Request     map[string]any  `json:"request"`
 	Expect  json.RawMessage `json:"expect"`
 }
 
@@ -97,6 +106,9 @@ func TestConformanceCryptoVectors(t *testing.T) {
 						t.Fatalf("reason=%q", reason)
 					}
 					if reason == "" {
+						if u, ok := want("use").(string); ok && p.Atp.Use != u {
+							t.Fatalf("use %q want %q", p.Atp.Use, u)
+						}
 						if p.Sub != want("sub").(string) || p.Atp.Action != want("action").(string) || float64(left) != want("expires_in").(float64) {
 							t.Fatalf("sub %s action %s left %d", p.Sub, p.Atp.Action, left)
 						}
@@ -112,16 +124,37 @@ func TestConformanceCryptoVectors(t *testing.T) {
 			deps.GetFederatedIssuer = func(iss string) *FederatedIssuer {
 				for _, p := range v.World.Peers {
 					if p.EntityID == iss {
-						return &FederatedIssuer{Name: p.Name, TrustLevel: p.TrustLevel}
+						return &FederatedIssuer{Name: p.Name, TrustLevel: p.TrustLevel, StaleOkSeconds: p.StaleOk}
 					}
 				}
 				return nil
+			}
+			if v.World.PeerStatus != nil {
+				deps.PeerAttestationStatus = func(_, jti string) string {
+					if s, ok := (*v.World.PeerStatus)[jti]; ok {
+						return s
+					}
+					return "active"
+				}
+			}
+			if v.World.Consumed != nil {
+				seen := map[string]bool{}
+				for _, j := range *v.World.Consumed {
+					seen[j] = true
+				}
+				deps.ConsumeAttestation = func(jti string, _ int64) string {
+					if seen[jti] {
+						return "seen"
+					}
+					seen[jti] = true
+					return "first"
+				}
 			}
 			req, bad := ParseVerifyRequest(v.Request)
 			if bad != "" {
 				t.Fatal(bad)
 			}
-			r := Verify(req, deps, Options{Now: now})
+			r := Verify(req, deps, Options{Now: now, RequestHash: v.RequestHash, Audience: v.Audience})
 			if r.Decision != want("decision").(string) {
 				t.Fatalf("decision %s (%v)", r.Decision, r.Reasons)
 			}

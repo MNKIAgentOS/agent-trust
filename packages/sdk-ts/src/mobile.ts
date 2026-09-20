@@ -29,7 +29,9 @@ export interface MobileMe {
   user: { id: string; email: string; name: string | null };
   org: { id: string; name: string; role: Membership["role"] | null };
   memberships: Membership[];
-  plan: { tier: string; effective_tier: string; name: string; trial: { active: boolean; ends_at: string | null }; limits: { agents: number | null; verifications: number | null; members: number | null; retentionDays: number; trustDomains: number | null }; features: string[]; quota_exceeded_at: string | null };
+  plan: { tier: string; effective_tier: string; name: string; trial: { active: boolean; ends_at: string | null }; limits: { agents: number | null; verifications: number | null; members: number | null; retentionDays: number; trustDomains: number | null }; features: string[]; quota_exceeded_at: string | null;
+    /** Charge/display currency ("eur" | "usd" | "gbp") and the list prices in it; absent on older servers. */
+    currency?: string; prices?: { individual_monthly: number; individual_annual: number; team_monthly: number; team_annual: number; sso_monthly: number; sso_annual: number; overage_per_1000: number; enterprise_floor: number } };
   usage: { agents: number; verifications_30d: number; members: number; api_keys: number; trust_domains: number; period_start: string };
   notify: NotifyPrefs;
   platform_admin: boolean;

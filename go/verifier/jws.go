@@ -479,8 +479,50 @@ type AttestationClaims struct {
 		ApprovalID *string `json:"approval_id"`
 	} `json:"human_approval"`
 	DecisionID    string  `json:"decision_id"`
+	// Use is "single" (§9.2: consumed on first acceptance) or "multi"/absent (v0.1).
+	Use           string  `json:"use,omitempty"`
 	RequestHash   *string `json:"request_hash"`
 	PolicyVersion *string `json:"policy_version"`
+	// Grant (§17, v0.3 draft): what a brokered permit is for.
+	Grant *struct {
+		Connection string `json:"connection"`
+		Operation  string `json:"operation"`
+		ParamsHash string `json:"params_hash"`
+	} `json:"grant,omitempty"`
+}
+
+// Audience is the JWT aud claim: a string or an array of strings on the wire.
+type Audience []string
+
+func (a *Audience) UnmarshalJSON(b []byte) error {
+	var one string
+	if err := json.Unmarshal(b, &one); err == nil {
+		*a = Audience{one}
+		return nil
+	}
+	var many []string
+	if err := json.Unmarshal(b, &many); err != nil {
+		return err
+	}
+	*a = Audience(many)
+	return nil
+}
+
+func (a Audience) MarshalJSON() ([]byte, error) {
+	if len(a) == 1 {
+		return json.Marshal(a[0])
+	}
+	return json.Marshal([]string(a))
+}
+
+// Contains reports whether the audience names id.
+func (a Audience) Contains(id string) bool {
+	for _, x := range a {
+		if x == id {
+			return true
+		}
+	}
+	return false
 }
 
 // AttestationJWT payload.
@@ -490,7 +532,7 @@ type AttestationJWT struct {
 	Jti string            `json:"jti"`
 	Iat int64             `json:"iat"`
 	Exp int64             `json:"exp"`
-	Aud string            `json:"aud,omitempty"`
+	Aud Audience          `json:"aud,omitempty"`
 	Atp AttestationClaims `json:"atp"`
 }
 

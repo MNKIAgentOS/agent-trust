@@ -12,14 +12,21 @@ if (parsed.ok) {
   const result = await verify(parsed.request, deps, { now: new Date() });
   // result.decision: "ALLOW" | "DENY" | "REQUIRE_APPROVAL"
   // result.reasons:  machine-readable codes, e.g. "constraint_violated"
-  // result.evidence: one row per check — identity, credential, principal,
-  //                  delegation, capability, constraints, revocation,
-  //                  attestation, policy — each pass | warn | fail | skipped
+  // result.evidence: one row per check — identity, credential, proof,
+  //                  attestation_token, principal, delegation, capability,
+  //                  constraints, revocation, attestation, enforcement,
+  //                  policy, single_use — each pass | warn | fail | skipped
 }
 ```
 
-`deps` is a `VerifierDeps` — nine async getters you implement over your own
-storage (the console uses D1; the tests use maps built from JSON vectors).
+`deps` is a `VerifierDeps` — nine required async getters you implement over your
+own storage (the console uses D1; the tests use maps built from JSON vectors),
+plus optional ones that switch on extra checks when you provide them:
+`getOrgKey` and `getFederatedIssuer` (federation), `seenJti` (proof replay),
+`isAttestationRevoked`, `consumeAttestation` (profile §9.2: single-use permits;
+without it a single-use attestation is refused rather than silently accepted),
+`peerAttestationStatus` (§12.1: ask the issuing peer before accepting), and
+`spentSoFar` (lifetime budgets).
 
 ## What is guaranteed
 
@@ -32,7 +39,11 @@ storage (the console uses D1; the tests use maps built from JSON vectors).
   there is no numeric trust score anywhere in this package.
 - **Conformance.** `conformance/vectors/*.json` (repo root) are the executable
   specification; `tests/conformance.test.ts` runs every vector. A second
-  implementation is conformant when it passes the same files.
+  implementation is conformant when it passes the same files; the Go and Python
+  verifiers in this repository do.
+- **Permits are spent, not replayed.** A single-use attestation (profile §9.2) is
+  consumed atomically and only when the decision is ALLOW, so a refused request
+  never spends one and a replay is refused.
 
 ## Layout
 

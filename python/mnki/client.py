@@ -63,8 +63,35 @@ class AgentTrustClient:
     def delegate(self, issuer: dict, subject_agent_id: str, capabilities: list, parent_id: Optional[str] = None, task: Optional[str] = None, not_after: Optional[str] = None) -> dict:
         return self._call("POST", "/v1/delegations", {"issuer": issuer, "subjectAgentId": subject_agent_id, "capabilities": capabilities, "parentId": parent_id, "task": task, "notAfter": not_after})
     def credential_chain(self, delegation_id: str) -> dict: return self._call("GET", f"/v1/delegations/{delegation_id}/credential")
-    def issue_attestation(self, decision_id: str, ttl_seconds: Optional[int] = None, audience: Optional[str] = None) -> dict:
-        return self._call("POST", "/v1/attestations", {"decision_id": decision_id, "ttl_seconds": ttl_seconds, "audience": audience})
+    def issue_attestation(self, decision_id: str, ttl_seconds: Optional[int] = None, audience: Optional[str] = None, use: Optional[str] = None) -> dict:
+        return self._call("POST", "/v1/attestations", {"decision_id": decision_id, "ttl_seconds": ttl_seconds, "audience": audience, "use": use})
+    # --- access broker (profile §17) ---
+    def execute_grant(self, agent: str, connection: str, operation: str, params: Optional[dict] = None, approval_id: Optional[str] = None, attestation: Optional[str] = None, identity: Optional[AgentIdentity] = None) -> dict:
+        """Verify, grant once, execute. Returns the 200 body ({grant, decision, result}) or the 202 body ({decision, approval_id, poll_url, resume}) with `status` set to "executed" | "approval_required"; other statuses raise AgentTrustError."""
+        body = {"agent": agent, "connection": connection, "operation": operation, "params": params or {}}
+        if approval_id: body["approval_id"] = approval_id
+        if attestation: body["attestation"] = attestation
+        raw = json.dumps(body); headers = {}
+        if identity: headers["agent-proof"] = identity.sign_proof("POST", f"{self.base}/api/v1/grants/execute", raw)
+        req = urllib.request.Request(f"{self.base}/api/v1/grants/execute", data=raw.encode(), method="POST")
+        req.add_header("authorization", f"Bearer {self.key}"); req.add_header("content-type", "application/json")
+        for k, v in headers.items(): req.add_header(k, v)
+        try:
+            with self._open(req) as r:
+                j = json.loads(r.read() or b"{}"); j["status"] = "approval_required" if getattr(r, "status", 200) == 202 else "executed"; return j
+        except urllib.error.HTTPError as e:
+            try: j = json.loads(e.read() or b"{}")
+            except Exception: j = {}
+            raise AgentTrustError(e.code, j.get("error", f"http_{e.code}"), j) from None
+    def mint_grant(self, agent: str, connection: str, operation: str, params: Optional[dict] = None) -> dict:
+        return self._call("POST", "/v1/grants", {"agent": agent, "connection": connection, "operation": operation, "params": params or {}})
+    def grants(self, connection: Optional[str] = None, agent: Optional[str] = None, status: Optional[str] = None) -> dict:
+        q = "&".join(f"{k}={v}" for k, v in (("connection", connection), ("agent", agent), ("status", status)) if v); return self._call("GET", f"/v1/grants{'?' + q if q else ''}")
+    def connections(self) -> dict: return self._call("GET", "/v1/connections")
+    def connection_operations(self, connection_id: str) -> dict: return self._call("GET", f"/v1/connections/{connection_id}/operations")
+    def request_access(self, agent: str, connection: str, operations: list, reason: str, duration_seconds: int = 86400, constraints: Optional[dict] = None) -> dict:
+        return self._call("POST", "/v1/access-requests", {"agent": agent, "connection": connection, "operations": operations, "duration_seconds": duration_seconds, "constraints": constraints, "reason": reason})
+    def access_request_status(self, request_id: str) -> dict: return self._call("GET", f"/v1/access-requests/{request_id}")
     def revoke_attestation(self, attestation_id: str, reason: str) -> dict: return self._call("DELETE", f"/v1/attestations/{attestation_id}", {"reason": reason})
     def status(self, subject: str) -> dict: return self._call("GET", f"/v1/status/{subject}")
     def jwks(self, org_id: str) -> dict:

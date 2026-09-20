@@ -106,6 +106,21 @@ class Guard:
         except AgentTrustError: pass
         result["allowed"] = True; return result
 
+    def access(self, connection: str, operation: str, params: Optional[dict] = None) -> dict:
+        """Access broker: run one operation on a connection through Agent Trust with a credential the agent never holds. Waits for a human approval like `check` (mode permitting)."""
+        if self.client is None: raise ValueError("guard.access needs a hosted client")
+        r = self.client.execute_grant(self.agent, connection, operation, params or {}, identity=self.identity)
+        d = r.get("decision", {})
+        record = {"at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "mode": self.mode, "tool": f"{connection}/{operation}", "decision": d.get("decision"), "enforced": True, "reasons": d.get("reasons", []), "evidence": d.get("evidence", []), "decision_id": d.get("decision_id"), "approval_id": d.get("approval_id"), "tags": _tags(d)}
+        if self.on_decision: self.on_decision(record)
+        if r.get("status") == "executed": return r
+        if self.on_approval == "throw": raise ApprovalRequired(r.get("approval_id"), d.get("decision_id", ""), "pending", d.get("reasons"))
+        status = self.wait_for_approval(r["approval_id"])
+        if status != "approved": raise ApprovalRequired(r["approval_id"], d.get("decision_id", ""), status, d.get("reasons"))
+        again = self.client.execute_grant(self.agent, connection, operation, params or {}, approval_id=r["approval_id"], identity=self.identity)
+        if again.get("status") != "executed": raise ApprovalRequired(again.get("approval_id"), again.get("decision", {}).get("decision_id", ""), "pending", again.get("decision", {}).get("reasons"))
+        return again
+
     def wrap(self, tool: Optional[str] = None):
         """Decorator: the function runs only after `check` resolves. Keyword arguments (or a single dict) are the tool arguments."""
         def deco(fn: Callable):

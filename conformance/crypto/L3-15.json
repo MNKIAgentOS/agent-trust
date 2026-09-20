@@ -1,0 +1,89 @@
+{
+  "id": "L3-15",
+  "level": 3,
+  "title": "peer status consulted — attestation active (v0.2)",
+  "now": "2026-09-14T12:00:00.000Z",
+  "keys": {
+    "org_acme": {
+      "org-1": {
+        "kty": "EC",
+        "x": "UxSHvtC_SsPUdPy93zihF9l709ussPfJ1582VocCY_s",
+        "y": "OwxYocj2RqIFMJjvSrX4Tbm82Rofbkzg408OxNJIDV4",
+        "crv": "P-256",
+        "kid": "org-1"
+      }
+    },
+    "org_globex": {
+      "peer-1": {
+        "alg": "Ed25519",
+        "crv": "Ed25519",
+        "x": "DjpoxdH1wE3AgAN9xdMcTfAt4pHsietWcp4oUZHAHkg",
+        "kty": "OKP",
+        "kid": "peer-1"
+      }
+    }
+  },
+  "world": {
+    "agent": null,
+    "credential": null,
+    "principals": [],
+    "delegations": [],
+    "capabilities": [],
+    "revoked": [],
+    "attestations": [],
+    "policy": {
+      "version_id": "pv_a",
+      "hash": "ha",
+      "doc": {
+        "version": 1,
+        "rules": [
+          {
+            "id": "cap",
+            "match": {
+              "action": "purchase.create"
+            },
+            "conditions": [
+              {
+                "kind": "amount_gt",
+                "value": 3000
+              }
+            ],
+            "effect": "require_approval"
+          }
+        ]
+      }
+    },
+    "peers": [
+      {
+        "entity_id": "org_globex",
+        "name": "Globex",
+        "trust_level": 2
+      }
+    ],
+    "peer_status": {
+      "aat_g1": "active"
+    }
+  },
+  "request": {
+    "agent": "spiffe://globex.example/agent/buyer-9",
+    "action": "purchase.create",
+    "resource": "supplier:44",
+    "amount": 900,
+    "currency": "EUR",
+    "context": {
+      "region": "EU"
+    },
+    "attestation": "eyJhbGciOiJFZERTQSIsInR5cCI6ImFnZW50LXRydXN0LWF0dGVzdGF0aW9uK2p3dCIsImtpZCI6InBlZXItMSJ9.eyJpc3MiOiJvcmdfZ2xvYmV4Iiwic3ViIjoic3BpZmZlOi8vZ2xvYmV4LmV4YW1wbGUvYWdlbnQvYnV5ZXItOSIsImp0aSI6ImFhdF9nMSIsImlhdCI6MTc4OTM4NzIwMCwiZXhwIjoxNzg5Mzg3ODAwLCJhdHAiOnsidiI6MSwicHJpbmNpcGFsIjoicHJuX2JvYiIsIm9yZ2FuaXphdGlvbiI6Im9yZ19nbG9iZXgiLCJhY3Rpb24iOiJwdXJjaGFzZS5jcmVhdGUiLCJyZXNvdXJjZSI6InN1cHBsaWVyOioiLCJkZWNpc2lvbiI6IkFMTE9XIiwiY2FwYWJpbGl0aWVzIjpbeyJhY3Rpb24iOiJwdXJjaGFzZS5jcmVhdGUiLCJyZXNvdXJjZSI6InN1cHBsaWVyOioiLCJjb25zdHJhaW50cyI6eyJtYXhfdmFsdWUiOjUwMDAsImN1cnJlbmN5IjoiRVVSIiwicmVnaW9uIjpbIkVVIl19fSx7ImFjdGlvbiI6InN1cHBsaWVyLnNlYXJjaCIsInJlc291cmNlIjoic3VwcGxpZXI6KiJ9XSwiZGVsZWdhdGlvbl9jaGFpbiI6WyJkbGdfZzEiXSwiaHVtYW5fYXBwcm92YWwiOm51bGwsImRlY2lzaW9uX2lkIjoiZGVjXzEiLCJyZXF1ZXN0X2hhc2giOiJhYmMiLCJwb2xpY3lfdmVyc2lvbiI6InB2XzEifX0.vdrEOrEOswSRpOpIlGSNmTQ7Vje5X2QQ0hGxUOc0bIG0E1ghZxiXlHNaQeMU8gqN9jRvHSAVCs8KXQSXwIoPBw"
+  },
+  "expect": {
+    "decision": "ALLOW",
+    "reasons_include": [
+      "identity_federated",
+      "attestation_valid"
+    ],
+    "evidence": {
+      "identity": "pass",
+      "revocation": "pass"
+    }
+  }
+}

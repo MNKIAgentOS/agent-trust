@@ -44,16 +44,35 @@ apply everywhere.
 | Streamable HTTP (JSON and SSE answers, `mcp-session-id`) | Compatible | tested against a stand-in server; `DELETE` on close |
 | Hosted gateway (`/api/gateway/mcp/<integration>`) | Verified | Streamable HTTP servers only |
 
+## Brokered systems (access broker)
+
+Providers the broker can hold a credential for and execute against on an agent's behalf. "Verified" means the
+operation catalogue runs against a fake of the provider's documented API in the integration tests; live runs against
+each provider are recorded here as they are done.
+
+| Provider | Auth | Operations | Level |
+| --- | --- | --- | --- |
+| Stripe | restricted or secret key | refunds, charges, payment intents, customers, invoices, balance (probe) | Verified (fake API) |
+| GitHub | OAuth app or token | issues, issue comments, pull list, repo, user (probe); owner allow-list | Verified (fake API) |
+| Slack | OAuth app | `chat.postMessage`, `conversations.list`, `auth.test` (probe); `ok:false` envelopes fail the grant | Verified (fake API) |
+| Google | OAuth app | Gmail send, Calendar event create, userinfo (probe) | Verified (fake API) |
+| Microsoft 365 | OAuth app | Mail send, Calendar event create, `me` (probe) | Verified (fake API) |
+| AWS | IAM access key pair | STS AssumeRole (native short-lived credential), SigV4-signed request to allow-listed services | Verified (signature vectors + fake STS) |
+| Any HTTP API | API key in a header | operations declared per connection; public https only | Verified |
+
 ## Identity and standards
 
 | Standard | Where | Level |
 | --- | --- | --- |
 | SPIFFE JWT-SVID as agent credential | `Agent-Credential` header, trust anchors per organisation | Verified |
 | OIDC issuer tokens (Okta, Entra) | trust anchors, SSO | Verified |
-| AuthZEN 1.0 evaluation | `/api/v1/access/evaluation` | Verified |
+| AuthZEN 1.0 evaluation | `/api/access/v1/evaluation` | Verified |
 | MCP 2025-06 (tools/call) | proxy and gateway | Verified |
 | A2A (agent card, `mnki-sdk/a2a` signTaskRequest / verifyBeforeAccept) | `/v1/agents/{id}/agent-card`, `/.well-known/agent-card.json` | Compatible (attestation verified offline against the caller organisation's JWKS; tested with two local organisations) |
 | OpenID Federation entity configuration | `/.well-known/openid-federation` | Compatible |
+| Attestation status, profile §12.1 | `/v1/orgs/{id}/status/attestation/{jti}` (public, no auth) | Verified |
+| Single-use permits, profile §9.2 | `atp.use` on an attestation; consumed on the first `ALLOW` | Verified |
+| Effect path declaration, profile §15 | `context.effect_path` on `/v1/verify`; gateway `custody`, A2A receiver `attested`, local proxy `none` | Verified |
 
 ## Runtimes
 

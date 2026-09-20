@@ -74,8 +74,11 @@ def compute_effective_authority(chain: list, t: float) -> list:
 def _has(deps: Any, name: str) -> bool: return callable(getattr(deps, name, None))
 
 
-def verify(req: dict, deps: Any, now: datetime, request: Optional[dict] = None, require_proof: bool = False) -> dict:
-    """`request` binds a proof: {"proof", "htm", "htu", "body_hash", "credential"?}."""
+def verify(req: dict, deps: Any, now: datetime, request: Optional[dict] = None, require_proof: bool = False, request_hash: Optional[str] = None, audience: Optional[str] = None) -> dict:
+    """`request` binds a proof: {"proof", "htm", "htu", "body_hash", "credential"?}.
+
+    `request_hash` (profile v0.2 §9.2) is the canonical hash of the request being executed; a single-use
+    attestation whose `atp.request_hash` differs is refused."""
     if now.tzinfo is None: now = now.replace(tzinfo=timezone.utc)
     ev: list = []; reasons: list = []; state = {"hard_fail": False}
     t = now.timestamp() * 1000
@@ -95,7 +98,8 @@ def verify(req: dict, deps: Any, now: datetime, request: Optional[dict] = None, 
     cred = principal = leaf = pol = None; effective: list = []; chain_ids: list = []
     delegation_valid = authorized = revoked = False; remaining: Optional[float] = None
     proof_state = {"present": bool(request and request.get("proof")), "verified": False, "kid": None, "alg": None}
-    att_state = {"present": bool(req.get("attestation")), "valid": False, "jti": None, "expires_in": None}
+    att_state = {"present": bool(req.get("attestation")), "valid": False, "jti": None, "expires_in": None, "use": None, "consumed": False}
+    att_exp = att_iat = 0; att_approval: Optional[dict] = None; peer_stale_ok = 0
     federation = None; fed_caps = None; fed_chain: list = []; fed_principal = None; fed_approved = False
     amount, currency, resource, action = req.get("amount"), req.get("currency"), req.get("resource"), req["action"]
     region = (req.get("context") or {}).get("region"); region = region if isinstance(region, str) else None
@@ -111,6 +115,23 @@ def verify(req: dict, deps: Any, now: datetime, request: Optional[dict] = None, 
                 "policy_version": pol.get("version_id") if pol else None, "policy_hash": pol.get("hash") if pol else None,
                 "proof": proof_state, "attestation": att_state, "federation": federation}
 
+    def _aud_ok(aud: Any) -> bool:
+        """§17: a relying party that declares its audience accepts only permits that name it."""
+        if not audience: return True
+        return audience in aud if isinstance(aud, list) else aud == audience
+
+    def _aud_text(aud: Any) -> str: return (",".join(aud) if isinstance(aud, list) else aud) or "(none)"
+
+    def _bound_elsewhere(atp: dict) -> bool:
+        """§9.2: a single-use permit is bound to the request it was approved for."""
+        return atp.get("use") == "single" and bool(request_hash) and bool(atp.get("request_hash")) and atp["request_hash"] != request_hash
+
+    def _approval_of(atp: dict) -> Optional[dict]:
+        """A human approval the attestation carries, and whether it covers this very request."""
+        ha = atp.get("human_approval") or {}
+        if not ha.get("approved"): return None
+        return {"approval_id": ha.get("approval_id"), "bound": not request_hash or not atp.get("request_hash") or atp["request_hash"] == request_hash}
+
     detail = action + (f" on {resource}" if resource else "") + (f" · {amount} {currency or ''}".rstrip() if amount is not None else "")
     push("request", "pass", "Request parsed", detail)
 
@@ -124,11 +145,16 @@ def verify(req: dict, deps: Any, now: datetime, request: Optional[dict] = None, 
             if not a["ok"]: fail("identity", "Federated attestation invalid", f"attestation_invalid:{a['reason']}", f"issuer {iss}: {a['reason']}"); return finish("DENY")
             p = a["payload"]; atp = p["atp"]
             if p.get("sub") != req["agent"]: fail("identity", "Federated attestation names a different agent", "attestation_invalid:subject", f"sub {p.get('sub')}"); return finish("DENY")
+            if not _aud_ok(p.get("aud")): fail("identity", "Federated attestation is for a different audience", "attestation_invalid:audience", f"aud {_aud_text(p.get('aud'))}; expected {audience}"); return finish("DENY")
             if atp.get("action") != action or (atp.get("resource") and resource and not resource_contains(atp["resource"], resource)):
                 fail("identity", "Federated attestation does not cover this action", "attestation_invalid:action", f"attested {atp.get('action')}" + (f" on {atp['resource']}" if atp.get("resource") else "")); return finish("DENY")
+            if _bound_elsewhere(atp):
+                fail("identity", "Federated attestation is bound to a different request", "attestation_invalid:request_hash", f"single-use attestation {p.get('jti')} was issued for another request", [p.get("jti")]); return finish("DENY")
             agent = {"id": p["sub"], "stable_id": p["sub"], "lifecycle": "active", "risk_tier": "medium", "owner_principal_id": None, "labels": {"federated_org": iss}}
             federation = {"issuer": iss, "name": peer["name"], "trust_level": peer["trust_level"]}; fed_caps = atp.get("capabilities", []); fed_chain = atp.get("delegation_chain") or []; fed_principal = atp.get("principal"); fed_approved = bool((atp.get("human_approval") or {}).get("approved"))
-            att_state.update({"valid": True, "jti": p.get("jti"), "expires_in": a.get("expires_in")}); reasons += ["identity_federated", "attestation_valid"]
+            att_state.update({"valid": True, "jti": p.get("jti"), "expires_in": a.get("expires_in"), "use": atp.get("use") or "multi"})
+            att_exp = p.get("exp") or 0; att_iat = p.get("iat") or 0; att_approval = _approval_of(atp); peer_stale_ok = peer.get("stale_ok_seconds") or 0
+            reasons += ["identity_federated", "attestation_valid"]
             push("identity", "pass", f"Federated agent — attested by {peer['name']} (trust level {peer['trust_level']})", p["sub"], [p.get("jti")])
         elif peer:
             fail("identity", "Peer organization is trusted at level 1 only", "federation_level_insufficient", f"{peer['name']} may not act here; raise it to trust level 2"); return finish("DENY")
@@ -191,12 +217,16 @@ def verify(req: dict, deps: Any, now: datetime, request: Optional[dict] = None, 
                 else:
                     p = a["payload"]; atp = p["atp"]
                     if p.get("sub") not in (agent["id"], agent.get("stable_id")): fail("attestation_token", "Attestation issued to a different agent", "attestation_invalid:subject", f"sub {p.get('sub')}")
+                    elif not _aud_ok(p.get("aud")): fail("attestation_token", "Attestation is for a different audience", "attestation_invalid:audience", f"aud {_aud_text(p.get('aud'))}; expected {audience}", [p.get("jti")])
                     elif atp.get("action") != action: fail("attestation_token", "Attestation covers a different action", "attestation_invalid:action", f"attested {atp.get('action')}")
                     elif atp.get("resource") and resource and not resource_contains(atp["resource"], resource): fail("attestation_token", "Attestation does not cover this resource", "attestation_invalid:resource", f"attested {atp['resource']}")
+                    elif _bound_elsewhere(atp): fail("attestation_token", "Attestation bound to a different request", "attestation_invalid:request_hash", f"single-use attestation {p.get('jti')} was issued for another request", [p.get("jti")])
                     elif _has(deps, "is_attestation_revoked") and deps.is_attestation_revoked(p.get("jti")): fail("attestation_token", "Attestation revoked", "attestation_invalid:revoked", None, [p.get("jti")])
                     else:
-                        att_state.update({"valid": True, "jti": p.get("jti"), "expires_in": a.get("expires_in")}); reasons.append("attestation_valid")
-                        push("attestation_token", "pass", f"Authorization attestation valid (expires in {a.get('expires_in')}s)", f"issued by {p.get('iss')} for {atp.get('action')}" + (" · human-approved" if (atp.get("human_approval") or {}).get("approved") else ""), [p.get("jti")])
+                        att_state.update({"valid": True, "jti": p.get("jti"), "expires_in": a.get("expires_in"), "use": atp.get("use") or "multi"})
+                        att_exp = p.get("exp") or 0; att_iat = p.get("iat") or 0; att_approval = _approval_of(atp)
+                        reasons.append("attestation_valid")
+                        push("attestation_token", "pass", f"Authorization attestation valid (expires in {a.get('expires_in')}s)", f"issued by {p.get('iss')} for {atp.get('action')}", [p.get("jti")])
 
         # 5. principal
         principal = deps.get_principal(agent["owner_principal_id"]) if agent.get("owner_principal_id") else None
@@ -204,7 +234,10 @@ def verify(req: dict, deps: Any, now: datetime, request: Optional[dict] = None, 
         else: push("principal", "warn", "No delegating principal", "Authority is not bound to a human or service owner."); reasons.append("principal_unbound")
 
         # 6–8. delegation chain → effective authority
-        leaf = deps.get_leaf_delegation(agent["id"], req.get("delegation_id"))
+        # §17: without an explicit delegation id, prefer the delegation that covers this action.
+        leaf = None
+        if not req.get("delegation_id") and _has(deps, "get_covering_delegation"): leaf = deps.get_covering_delegation(agent["id"], action, resource)
+        if not leaf: leaf = deps.get_leaf_delegation(agent["id"], req.get("delegation_id"))
         if leaf:
             anc = deps.get_delegation_ancestry(leaf["id"]); by_id = {d["id"]: d for d in anc}
             chain = resolve_chain(leaf["id"], by_id.get)
@@ -250,7 +283,18 @@ def verify(req: dict, deps: Any, now: datetime, request: Optional[dict] = None, 
                 push("constraints", "pass", "Constraints satisfied", " · ".join(f"{k} {fmt(v)}" for k, v in cons.items()) if cons else "none")
 
     # 10. revocation — every link of the chain is consulted
-    if federation:
+    if federation and _has(deps, "peer_attestation_status"):
+        # §12.1: ask the issuing peer about this jti; unreachable refuses unless the peer's stale window still covers it.
+        jti = att_state.get("jti"); st = deps.peer_attestation_status(federation["issuer"], jti)
+        if st == "active": push("revocation", "pass", f"Peer revocation checked with {federation['name']} — none found", None, [jti])
+        elif st == "revoked": revoked = True; fail("revocation", f"Attestation revoked by {federation['name']}", "revoked", None, [jti])
+        else:
+            age = max(0, int(now.timestamp()) - att_iat)
+            if peer_stale_ok > 0 and age <= peer_stale_ok:
+                push("revocation", "warn", f"{federation['name']} unreachable — attestation accepted inside the stale window", f"issued {age}s ago; stale window {peer_stale_ok}s", [jti]); reasons.append("revocation_remote_unreachable")
+            else:
+                revoked = True; fail("revocation", f"{federation['name']} unreachable — revocation status unknown", "revocation_remote_unreachable", f"issued {age}s ago; stale window {peer_stale_ok}s", [jti])
+    elif federation:
         push("revocation", "warn", "Peer revocation not consulted", f"Attestation is short-lived (expires in {att_state.get('expires_in') if att_state.get('expires_in') is not None else '?'}s); {federation['name']}'s revocation list is not queried in v0.1."); reasons.append("revocation_remote_unchecked")
     else:
         revoked_ref = None
@@ -268,18 +312,43 @@ def verify(req: dict, deps: Any, now: datetime, request: Optional[dict] = None, 
     if atts: push("attestation", "pass", f"Runtime attested ({', '.join(a['kind'] for a in atts)})", None, [a["id"] for a in atts])
     else: push("attestation", "skipped", "No runtime attestation", "Not required by policy.")
 
+    # 11b. effect path (§15): the caller declares how the effect is enforced; the evidence shows it on every decision.
+    _effect_path = (req.get("context") or {}).get("effect_path")
+    if _effect_path == "custody": push("enforcement", "pass", "Effect path: the enforcement point holds the effect credential", "the agent never holds it, so the effector is reachable only through a decision")
+    elif _effect_path == "attested": push("enforcement", "pass", "Effect path: the effector verifies the attestation", "the effector executes only with an attestation bound to this request")
+    else: push("enforcement", "warn", "A direct path to the effector may exist", f"effect path {_effect_path if _effect_path == 'none' else 'undeclared'}; this decision relies on deployment isolation")
+
     # 12. policy
     pol = deps.get_policy(); effect = "allow"
     if pol:
         out = evaluate(pol["doc"], {"action": action, "resource": resource, "amount": amount, "currency": currency, "region": region, "risk_tier": agent.get("risk_tier"), "agent_labels": agent.get("labels") or {}, "delegation_depth": len(chain_ids), "attestations": [a["kind"] for a in atts], "time": now})
         effect = out["effect"]; reasons.extend(out["reasons"])
-        status = "pass" if effect == "allow" else ("fail" if effect == "deny" else "warn")
-        title = "Policy allows" if effect == "allow" else ("Policy denies" if effect == "deny" else "Policy requires human approval")
-        push("policy", status, title, f"fired: {', '.join(out['fired'])}" if out["fired"] else "no rule fired", [pol["version_id"]] if pol.get("version_id") else None)
+        if effect == "require_approval" and att_state["valid"] and att_approval and att_approval["bound"] and att_state.get("jti"):
+            # §9.2: the presented attestation carries the approval this policy asks for, for this very request.
+            effect = "allow"; reasons.append("human_approved_by_attestation")
+            d = f"approval {att_approval['approval_id'] or '?'} carried by {att_state['jti']}"
+            if out["fired"]: d = f"fired: {', '.join(out['fired'])}; " + d
+            push("policy", "pass", "Policy's approval requirement is met by a human-approved attestation", d, ([pol["version_id"]] if pol.get("version_id") else []) + [att_state["jti"]])
+        else:
+            status = "pass" if effect == "allow" else ("fail" if effect == "deny" else "warn")
+            title = "Policy allows" if effect == "allow" else ("Policy denies" if effect == "deny" else "Policy requires human approval")
+            push("policy", status, title, f"fired: {', '.join(out['fired'])}" if out["fired"] else "no rule fired", [pol["version_id"]] if pol.get("version_id") else None)
         if effect == "deny": state["hard_fail"] = True
     else: push("policy", "skipped", "No active policy")
 
     # 13. decide
     decision = "DENY" if state["hard_fail"] else ("REQUIRE_APPROVAL" if effect == "require_approval" else "ALLOW")
+
+    # 14. single-use attestation (§9.2): spent only when the effect is about to be allowed, and atomically.
+    if decision == "ALLOW" and att_state["valid"] and att_state.get("use") == "single" and att_state.get("jti"):
+        jti = att_state["jti"]
+        if not _has(deps, "consume_attestation"):
+            fail("single_use", "Single-use attestation cannot be consumed here", "attestation_invalid:no_consume_store", f"No consumption store: single-use attestation {jti} is refused where its use cannot be recorded", [jti]); decision = "DENY"
+        elif deps.consume_attestation(jti, att_exp) == "seen":
+            fail("single_use", "Attestation already used", "attestation_invalid:consumed", f"Single-use attestation {jti} was consumed by an earlier request", [jti]); decision = "DENY"
+        else:
+            att_state["consumed"] = True; reasons.append("attestation_consumed")
+            push("single_use", "pass", "Single-use attestation consumed", f"{jti} cannot be presented again", [jti])
+
     if decision == "ALLOW": reasons[0:0] = ["identity_verified", "authority_valid"]
     return finish(decision)

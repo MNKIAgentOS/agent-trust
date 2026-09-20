@@ -23,6 +23,17 @@ Submission mechanics: the draft is authored in kramdown-rfc markdown; render wit
 spec/draft-mnki-agent-trust-profile-00.md` and submit via the IETF datatracker. Keep `-00` frozen once
 posted; changes go to `-01`. Every semantic change ships with a conformance vector first.
 
+## Queued for `-01`
+
+The Internet-Draft `-00` is frozen and describes profile v0.1. The v0.2 additions below land in `-01`,
+each with the conformance vectors that fix their semantics:
+
+- **Single-use attestations** (profile §9.2): `atp.use`, consumption on first acceptance, request binding.
+- **Cross-organization revocation** (§12.1, §13.1): the attestation status endpoint and the receiver's duty
+  to consult it, including the fail-closed rule when an issuer is unreachable.
+- **Enforcement points and effect paths** (§15): the `NO_DIRECT_EFFECT_PATH` invariant and the two ways to
+  establish it.
+
 ## Submission-ready rendering
 
 `spec/rendered/` holds the Internet-Draft as XML (RFC 7991 v3), plain text and HTML, produced from the
@@ -40,5 +51,5 @@ Submission checklist:
 3. **Next:** announce on the WIMSE and OAuth lists and open the OpenID AuthZEN / Federation issues — drafts in
    [../docs/gtm/announcements.md](../docs/gtm/announcements.md).
 4. On feedback, bump `docname` to `-01`, re-render, resubmit; keep the profile text in
-   `spec/agent-trust-profile-v0.1.md` in sync. Re-render with the venv used for `-00`:
+   `spec/agent-trust-profile-v0.2.md` in sync. Re-render with the venv used for `-00`:
    `xml2rfc --text --html spec/rendered/draft-mnki-agent-trust-profile-00.xml`.

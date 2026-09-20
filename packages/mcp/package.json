@@ -1,6 +1,6 @@
 {
   "name": "mnki-mcp",
-  "version": "0.1.6",
+  "version": "0.3.0",
   "description": "mnki-mcp — a local MCP proxy that verifies every tools/call against Agent Trust before it reaches the server (observe → warn → require_approval → enforce). Installed by `mnki protect`.",
   "license": "Apache-2.0",
   "type": "module",
@@ -14,8 +14,8 @@
   },
   "sideEffects": false,
   "dependencies": {
-    "mnki-sdk": "^0.1.6",
-    "mnki-verifier": "^0.1.6"
+    "mnki-sdk": "^0.3.0",
+    "mnki-verifier": "^0.3.0"
   },
   "repository": {
     "type": "git",

@@ -72,6 +72,19 @@ g = Guard(AgentTrustClient("https://mnki.com", api_key=os.environ["MNKI_API_KEY"
 def refund(customer_id: str, amount: float, currency: str = "EUR"): ...
 ```
 
+### Let the agent act without a key
+
+Connect Stripe in Console → **Access** with a restricted key, grant the agent `refund.create` up to €500, and let the
+broker do the call: the agent asks for one operation, gets a single-use grant, and never sees the credential.
+
+```ts
+const r = await client.grants.run({ agent: "invoice-agent", connection: "con_…", operation: "refund.create", params: { charge: "ch_1…", amount: 42000, currency: "EUR" } });
+// r.grant.status === "executed" · r.result.body is the redacted Stripe answer · r.decision has the evidence
+```
+
+Denied for a missing capability? `mnki access request --agent invoice-agent --connection con_… --op customer.get --for 1h --reason "…"`
+asks a person, who approves for an hour from the console. Full guide: [Access broker](/docs/access-broker).
+
 ## 4. Your framework
 
 Adapters are subpaths of the same packages; the framework itself is never imported by mnki.

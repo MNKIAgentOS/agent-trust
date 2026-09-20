@@ -1,0 +1,138 @@
+{
+  "id": "L3-14",
+  "level": 3,
+  "title": "without the permit the same request still escalates (v0.2 control)",
+  "now": "2026-09-14T12:00:00.000Z",
+  "keys": {
+    "org_acme": {
+      "org-1": {
+        "kty": "EC",
+        "x": "UxSHvtC_SsPUdPy93zihF9l709ussPfJ1582VocCY_s",
+        "y": "OwxYocj2RqIFMJjvSrX4Tbm82Rofbkzg408OxNJIDV4",
+        "crv": "P-256",
+        "kid": "org-1"
+      }
+    },
+    "org_globex": {
+      "peer-1": {
+        "alg": "Ed25519",
+        "crv": "Ed25519",
+        "x": "DjpoxdH1wE3AgAN9xdMcTfAt4pHsietWcp4oUZHAHkg",
+        "kty": "OKP",
+        "kid": "peer-1"
+      }
+    }
+  },
+  "world": {
+    "agent": {
+      "id": "agt_child",
+      "stable_id": "spiffe://acme/agent/child",
+      "lifecycle": "active",
+      "risk_tier": "low",
+      "owner_principal_id": "prn_alice",
+      "labels": {}
+    },
+    "credential": {
+      "id": "crd_1",
+      "kind": "jwt_svid",
+      "status": "active",
+      "not_after": "2027-03-15T00:00:00Z"
+    },
+    "principals": [
+      {
+        "id": "prn_alice",
+        "display_name": "Alice",
+        "kind": "user"
+      }
+    ],
+    "delegations": [
+      {
+        "id": "dlg_root",
+        "parent_id": null,
+        "subject_agent_id": "agt_parent",
+        "status": "active",
+        "not_after": "2027-01-01T00:00:00Z",
+        "capabilities": [
+          {
+            "action": "purchase.create",
+            "resource": "supplier:*",
+            "constraints": {
+              "max_value": 5000,
+              "currency": "EUR",
+              "region": [
+                "EU"
+              ]
+            }
+          },
+          {
+            "action": "supplier.search",
+            "resource": "supplier:*"
+          }
+        ]
+      },
+      {
+        "id": "dlg_child",
+        "parent_id": "dlg_root",
+        "subject_agent_id": "agt_child",
+        "status": "active",
+        "not_after": null,
+        "capabilities": [
+          {
+            "action": "purchase.create",
+            "resource": "supplier:1*",
+            "constraints": {
+              "max_value": 1200,
+              "currency": "EUR",
+              "region": [
+                "EU"
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "capabilities": [],
+    "revoked": [],
+    "attestations": [],
+    "policy": {
+      "version_id": "pv_b",
+      "hash": "hb",
+      "doc": {
+        "version": 1,
+        "rules": [
+          {
+            "id": "over-500",
+            "match": {
+              "action": "purchase.create"
+            },
+            "conditions": [
+              {
+                "kind": "amount_gt",
+                "value": 500
+              }
+            ],
+            "effect": "require_approval"
+          }
+        ]
+      }
+    },
+    "peers": [],
+    "consumed": []
+  },
+  "request": {
+    "agent": "agt_child",
+    "action": "purchase.create",
+    "resource": "supplier:123",
+    "amount": 900,
+    "currency": "EUR",
+    "context": {
+      "region": "EU"
+    }
+  },
+  "expect": {
+    "decision": "REQUIRE_APPROVAL",
+    "evidence": {
+      "policy": "warn"
+    }
+  }
+}

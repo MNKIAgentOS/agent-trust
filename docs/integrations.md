@@ -133,8 +133,25 @@ resp = client.responses.create(
 )
 ```
 
+Because the gateway holds the upstream credential and the agent never does, its decisions record the effect
+path as **custody** (profile §15): the evidence shows the server could not have been called around the check.
+The local proxy declares `none` instead, honestly, since it shares a machine with the agent process.
+
 The ChatGPT connector directory, Claude connectors and Smithery require OAuth sign-in on the server instead of
 a header; that is planned for the gateway and will be announced here.
+
+## Access broker: a connection as an MCP server
+
+Console → **Access** → connect Stripe, GitHub, Google, Slack, Microsoft, AWS or any HTTP API once. Every connection is
+then an MCP server at `https://mnki.com/api/gateway/access/<connection id>/mcp`: `tools/list` is the operations you
+enabled, every `tools/call` is verified with the connection as audience, granted once and executed by the broker with
+the stored credential. The agent never holds a key. The same path is `POST /v1/grants/execute` for anything that
+speaks HTTP, `client.grants.run(...)` in the SDKs and `mnki access run …` in the CLI. Full guide: [Access broker](/docs/access-broker).
+
+```json
+{ "mcpServers": { "stripe": { "url": "https://mnki.com/api/gateway/access/con_…/mcp",
+  "headers": { "Authorization": "Bearer at_verify_…", "Agent-Id": "invoice-agent" } } } }
+```
 
 ## Frameworks
 
@@ -180,12 +197,21 @@ the ledger event id; a `REQUIRE_APPROVAL` includes an `approval_id` to poll at `
 Policy engines that speak [AuthZEN](/docs/standards) call `/api/access/v1/evaluation` with the same key.
 Full reference: [API](/docs/api) and the OpenAPI document at `/api/v1/openapi`.
 
+**Permits.** `POST /v1/attestations { decision_id }` turns an allowed or approved decision into a short-lived
+signed permit, which an agent presents as `attestation` on later calls. A permit derived from a human approval
+is single-use (profile §9.2): the first `ALLOW` that presents it consumes it, a replay is refused with
+`attestation_invalid:consumed`, and it only works for the request it was approved for.
+`GET /v1/orgs/{id}/status/attestation/{jti}` is public and answers `active`, `revoked`, `expired` or
+`unknown`, so anyone who accepted one of your attestations can check it before acting (§12.1).
+
 ## Offline verification
 
 `mnki-verifier` (TypeScript) and `at-verify` (Go, `go/cmd/at-verify`) validate delegation chains, signed
 decisions and attestations without contacting the console, against the organisation's published keys. They
 pass the same [conformance vectors](/docs/conformance) as the hosted verifier, so a partner can check a
-signed attestation from your agents in their own process.
+signed attestation from your agents in their own process. An offline verifier keeps no record of what it has
+spent, so it refuses a single-use permit rather than accepting one it cannot consume; send those to the
+hosted verifier.
 
 ## Where the packages live
 

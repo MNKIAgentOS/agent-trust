@@ -77,6 +77,20 @@ func depsFrom(w vectorWorld) Deps {
 			return nil
 		},
 		GetDelegationAncestry: func(string) []Delegation { return w.Delegations },
+		GetCoveringDelegation: func(agentID, action string, resource *string) *Delegation {
+			for i := range w.Delegations {
+				d := w.Delegations[i]
+				if d.SubjectAgentID != agentID || d.Status != "active" {
+					continue
+				}
+				for _, c := range d.Capabilities {
+					if c.Action == action && (resource == nil || ResourceContains(c.Resource, *resource)) {
+						return &w.Delegations[i]
+					}
+				}
+			}
+			return nil
+		},
 		GetAgentCapabilities:  func(string) CapSet { return w.Capabilities },
 		IsRevoked:             func(_, id string) bool { return revoked[id] },
 		GetAttestations:       func(string) []AttestationInfo { return w.Attestations },

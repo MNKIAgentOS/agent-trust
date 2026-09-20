@@ -37,7 +37,7 @@ export function createVerifier(o: VerifierOptions): Verifier {
     const amount = typeof amountRaw === "number" ? amountRaw : typeof amountRaw === "string" && /^\d+(\.\d+)?$/.test(amountRaw) ? Number(amountRaw) : undefined;
     const curRaw = m.currency ? a[m.currency] : a.currency;
     const currency = typeof curRaw === "string" && /^[A-Z]{3}$/.test(curRaw) ? curRaw : undefined;
-    return { ...(amount !== undefined ? { amount } : {}), ...(currency ? { currency } : {}), resource: `mcp://${o.server}/tools/${tool}`, context: { mcp: { server: o.server, tool, ...(m.resource && typeof a[m.resource] === "string" ? { target: a[m.resource] } : {}) } } };
+    return { ...(amount !== undefined ? { amount } : {}), ...(currency ? { currency } : {}), resource: `mcp://${o.server}/tools/${tool}`, context: { mcp: { server: o.server, tool, ...(m.resource && typeof a[m.resource] === "string" ? { target: a[m.resource] } : {}) }, effect_path: "none" } };   // §15: the agent process and the server share a machine; only the hosted gateway can claim custody
   };
   const guard = createGuard({ client: { baseUrl: o.baseUrl, apiKey: o.apiKey, fetch: o.fetch }, agent: o.agent, identity: o.identity, mode: o.mode, actionPrefix: "mcp:tools/call:", mapArgs, onApproval: o.approval?.wait === false ? "throw" : "wait", approval: { timeoutMs: o.approval?.timeoutMs }, onDecision: o.onDecision });
   return {

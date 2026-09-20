@@ -22,6 +22,7 @@ describe("mnki-mcp verifier", () => {
     expect(await v.check("create_payment", { total: "1200", ccy: "EUR", note: "x" })).toEqual({ allowed: true });
     expect(bodies[0]).toMatchObject({ agent: "agt_1", action: "mcp:tools/call:create_payment", resource: "mcp://github/tools/create_payment", amount: 1200, currency: "EUR", context: { mcp: { server: "github", tool: "create_payment" }, tool: "create_payment" } });
     expect(typeof (bodies[0].context as { arguments_hash: string }).arguments_hash).toBe("string");
+    expect((bodies[0].context as { effect_path: string }).effect_path).toBe("none");   // §15: honest — the local proxy cannot claim custody
     await v.check("other", { amount: 5, currency: "usd" }); expect(bodies[1]).toMatchObject({ amount: 5 }); expect(bodies[1]).not.toHaveProperty("currency");
     expect(parseAmountMap(" a=x:y , b=z, c ")).toEqual({ a: { amount: "x", currency: "y" }, b: { amount: "z" }, c: {} });
   });

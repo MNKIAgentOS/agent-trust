@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { verify, type VerifierDeps, type AgentInfo, type CredentialInfo, type PrincipalInfo, type AttestationInfo, type ActivePolicy } from "../src/pipeline";
+import { resourceContains } from "../src/delegation/attenuate";
 import type { Delegation, CapSet, VerifyRequest } from "../src/types";
 
 interface Vector { id: string; title: string; now: string; world: { agent: AgentInfo | null; credential: CredentialInfo | null; principals: PrincipalInfo[]; delegations: Delegation[]; capabilities: CapSet; revoked: string[]; attestations: AttestationInfo[]; policy: ActivePolicy | null }; request: VerifyRequest; expect: { decision: string; reasons_include?: string[]; reasons_exact?: string[]; evidence?: Record<string, string> } }
@@ -16,6 +17,7 @@ function depsFrom(w: Vector["world"]): VerifierDeps {
     getLeafDelegation: async (agentId, delegationId) => w.delegations.find((d) => (delegationId ? d.id === delegationId : d.subject_agent_id === agentId && d.parent_id !== null)) ?? w.delegations.find((d) => d.subject_agent_id === agentId) ?? null,
     getDelegationAncestry: async () => w.delegations,
     getAgentCapabilities: async () => w.capabilities,
+    getCoveringDelegation: async (agentId, action, resource) => w.delegations.find((d) => d.subject_agent_id === agentId && d.status === "active" && d.capabilities.some((c) => c.action === action && (!resource || resourceContains(c.resource, resource)))) ?? null,
     isRevoked: async (_t, id) => revoked.has(id),
     getAttestations: async () => w.attestations,
     getPolicy: async () => w.policy,

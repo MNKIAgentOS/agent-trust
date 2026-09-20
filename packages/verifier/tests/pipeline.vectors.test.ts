@@ -45,7 +45,7 @@ describe("verify() vectors", () => {
   it("V01 happy path: ALLOW with every step passing", async () => {
     const r = await verify(req(2450), world(), { now: NOW });
     expect(r.decision).toBe("ALLOW");
-    expect(r.evidence.map((e) => [e.step, e.status])).toEqual([["request", "pass"], ["identity", "pass"], ["credential", "pass"], ["proof", "warn"], ["principal", "pass"], ["delegation", "pass"], ["capability", "pass"], ["constraints", "pass"], ["revocation", "pass"], ["attestation", "skipped"], ["policy", "pass"]]);
+    expect(r.evidence.map((e) => [e.step, e.status])).toEqual([["request", "pass"], ["identity", "pass"], ["credential", "pass"], ["proof", "warn"], ["principal", "pass"], ["delegation", "pass"], ["capability", "pass"], ["constraints", "pass"], ["revocation", "pass"], ["attestation", "skipped"], ["enforcement", "warn"], ["policy", "pass"]]);
     expect(r.reasons).toContain("identity_verified"); expect(r.delegation).toMatchObject({ valid: true, chain_length: 1 }); expect(r.policy_version).toBe("pv_17");
   });
   it("V02 amount above approval threshold: REQUIRE_APPROVAL, everything else passes", async () => {

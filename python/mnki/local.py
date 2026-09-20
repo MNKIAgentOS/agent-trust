@@ -9,6 +9,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
+from .offline import resource_contains
 from .pipeline import parse_verify_request, verify
 
 
@@ -24,6 +25,12 @@ class WorldDeps:
     def get_leaf_delegation(self, agent_id: str, delegation_id: Optional[str] = None) -> Optional[dict]:
         d = next((d for d in self._dels if (d.get("id") == delegation_id if delegation_id else (d.get("subject_agent_id") == agent_id and d.get("parent_id") is not None))), None)
         return d or next((d for d in self._dels if d.get("subject_agent_id") == agent_id), None)
+    def get_covering_delegation(self, agent_id: str, action: str, resource: Optional[str] = None) -> Optional[dict]:
+        for d in self._dels:
+            if d.get("subject_agent_id") != agent_id or d.get("status") != "active": continue
+            for c in d.get("capabilities") or []:
+                if c.get("action") == action and (resource is None or resource_contains(c.get("resource", ""), resource)): return d
+        return None
     def get_delegation_ancestry(self, leaf_id: str) -> list: return self._dels
     def get_agent_capabilities(self, agent_id: str) -> list: return self.w.get("capabilities") or []
     def is_revoked(self, subject_type: str, subject_id: str) -> bool: return subject_id in self._revoked

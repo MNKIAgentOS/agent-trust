@@ -35,3 +35,20 @@ Invariants every implementation must also satisfy (property-tested in the
 reference): `attenuate(parent, child) ⊆ parent`; a chain never widens the root's
 authority; an expired or revoked link anywhere yields no authority; `verify()`
 is deterministic for a fixed `now`.
+
+## Evidence codes
+
+Every evidence row may also carry two optional fields:
+
+```json
+{ "step": "capability", "status": "pass", "title": "Capability purchase.create granted", "detail": "supplier:*",
+  "code": "capability.granted", "params": { "action": "purchase.create", "resource": "supplier:*" } }
+```
+
+`code` is a stable `<step>.<meaning>` identifier (the full list is
+`packages/verifier/src/evidence-codes.ts`; the Go core emits the same set) and
+`params` holds the values the row interpolated, as JSON primitives or `null`.
+They let a client render the row in any language. `title` and `detail` remain
+the normative English text and are unchanged by the presence of a code; the
+vectors assert decisions, reasons and evidence statuses only and do not assert
+codes yet. Clients must tolerate rows without `code` (older servers).

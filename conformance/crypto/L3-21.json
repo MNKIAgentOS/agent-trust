@@ -1,0 +1,122 @@
+{
+  "id": "L3-21",
+  "level": 3,
+  "title": "audience declared but the permit names another effector: refused (v0.3)",
+  "now": "2026-09-14T12:00:00.000Z",
+  "keys": {
+    "org_acme": {
+      "org-1": {
+        "kty": "EC",
+        "x": "UxSHvtC_SsPUdPy93zihF9l709ussPfJ1582VocCY_s",
+        "y": "OwxYocj2RqIFMJjvSrX4Tbm82Rofbkzg408OxNJIDV4",
+        "crv": "P-256",
+        "kid": "org-1"
+      }
+    },
+    "org_globex": {
+      "peer-1": {
+        "alg": "Ed25519",
+        "crv": "Ed25519",
+        "x": "DjpoxdH1wE3AgAN9xdMcTfAt4pHsietWcp4oUZHAHkg",
+        "kty": "OKP",
+        "kid": "peer-1"
+      }
+    }
+  },
+  "world": {
+    "agent": {
+      "id": "agt_child",
+      "stable_id": "spiffe://acme/agent/child",
+      "lifecycle": "active",
+      "risk_tier": "low",
+      "owner_principal_id": "prn_alice",
+      "labels": {}
+    },
+    "credential": {
+      "id": "crd_1",
+      "kind": "jwt_svid",
+      "status": "active",
+      "not_after": "2027-03-15T00:00:00Z"
+    },
+    "principals": [
+      {
+        "id": "prn_alice",
+        "display_name": "Alice",
+        "kind": "user"
+      }
+    ],
+    "delegations": [
+      {
+        "id": "dlg_root",
+        "parent_id": null,
+        "subject_agent_id": "agt_parent",
+        "status": "active",
+        "not_after": "2027-01-01T00:00:00Z",
+        "capabilities": [
+          {
+            "action": "purchase.create",
+            "resource": "supplier:*",
+            "constraints": {
+              "max_value": 5000,
+              "currency": "EUR",
+              "region": [
+                "EU"
+              ]
+            }
+          },
+          {
+            "action": "supplier.search",
+            "resource": "supplier:*"
+          }
+        ]
+      },
+      {
+        "id": "dlg_child",
+        "parent_id": "dlg_root",
+        "subject_agent_id": "agt_child",
+        "status": "active",
+        "not_after": null,
+        "capabilities": [
+          {
+            "action": "purchase.create",
+            "resource": "supplier:1*",
+            "constraints": {
+              "max_value": 1200,
+              "currency": "EUR",
+              "region": [
+                "EU"
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "capabilities": [],
+    "revoked": [],
+    "attestations": [],
+    "policy": null,
+    "peers": [],
+    "consumed": []
+  },
+  "audience": "con_other",
+  "request": {
+    "agent": "agt_child",
+    "action": "purchase.create",
+    "resource": "supplier:123",
+    "amount": 900,
+    "currency": "EUR",
+    "context": {
+      "region": "EU"
+    },
+    "attestation": "eyJhbGciOiJFUzI1NiIsInR5cCI6ImFnZW50LXRydXN0LWF0dGVzdGF0aW9uK2p3dCIsImtpZCI6Im9yZy0xIn0.eyJpc3MiOiJvcmdfYWNtZSIsInN1YiI6ImFndF9jaGlsZCIsImp0aSI6ImFhdF9hdWQxIiwiaWF0IjoxNzg5Mzg3MjAwLCJleHAiOjE3ODkzODc4MDAsImF0cCI6eyJ2IjoxLCJwcmluY2lwYWwiOiJwcm5fYWxpY2UiLCJvcmdhbml6YXRpb24iOiJvcmdfYWNtZSIsImFjdGlvbiI6InB1cmNoYXNlLmNyZWF0ZSIsInJlc291cmNlIjoic3VwcGxpZXI6MTIzIiwiZGVjaXNpb24iOiJBTExPVyIsImNhcGFiaWxpdGllcyI6W3siYWN0aW9uIjoicHVyY2hhc2UuY3JlYXRlIiwicmVzb3VyY2UiOiJzdXBwbGllcjoxKiIsImNvbnN0cmFpbnRzIjp7Im1heF92YWx1ZSI6MTIwMCwiY3VycmVuY3kiOiJFVVIiLCJyZWdpb24iOlsiRVUiXX19XSwiZGVsZWdhdGlvbl9jaGFpbiI6WyJkbGdfcm9vdCIsImRsZ19jaGlsZCJdLCJodW1hbl9hcHByb3ZhbCI6bnVsbCwiZGVjaXNpb25faWQiOiJkZWNfMSIsInJlcXVlc3RfaGFzaCI6ImFiYyIsInBvbGljeV92ZXJzaW9uIjoicHZfMSIsImdyYW50Ijp7ImNvbm5lY3Rpb24iOiJjb25fc3RyaXBlXzEiLCJvcGVyYXRpb24iOiJyZWZ1bmQuY3JlYXRlIiwicGFyYW1zX2hhc2giOiJwaF8xIn19LCJhdWQiOiJjb25fc3RyaXBlXzEifQ.kkbNFilWKziDMsY6wJp2XYgQhhdzGgo0mNndaevST4j1273wEX7BPlHJfXiEHyx-nsP0SWYoSId-hEV84hd1eQ"
+  },
+  "expect": {
+    "decision": "DENY",
+    "reasons_include": [
+      "attestation_invalid:audience"
+    ],
+    "evidence": {
+      "attestation_token": "fail"
+    }
+  }
+}

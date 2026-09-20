@@ -4,7 +4,7 @@
  * policy says so, never hard-deny), `enforce`. Framework adapters are thin wrappers over `check()` / `wrap()`.
  */
 import { bodyHash } from "mnki-verifier";
-import { AgentTrustClient, AgentIdentity, AgentTrustError, type Decision, type VerifyInput } from "./index";
+import { AgentTrustClient, AgentIdentity, AgentTrustError, type Decision, type VerifyInput, type GrantExecution, type GrantRecord, type GrantDecision, type GrantResult } from "./index";
 import { ApprovalRequired, Denied, MnkiError, fromApi } from "./errors";
 import { localVerify, type LocalWorld } from "./local";
 
@@ -38,7 +38,12 @@ const defaultMap: NonNullable<GuardOptions["mapArgs"]> = (_tool, args) => {
   if (amount !== undefined) out.amount = amount;
   if (typeof a.currency === "string" && /^[A-Z]{3}$/.test(a.currency)) out.currency = a.currency;
   const res = [a.resource, a.customer_id, a.customerId, a.id].find((v) => typeof v === "string") as string | undefined; if (res) out.resource = res;
-  if (typeof a.region === "string") out.context = { region: a.region };
+  const ctx: Record<string, unknown> = {};
+  if (typeof a.region === "string") ctx.region = a.region;
+  // Receiver-side facts travel as arguments so any mapper sees them: the A2A caller (adapters/a2a) and the §15 effect path.
+  if (a.a2a && typeof a.a2a === "object") ctx.a2a = a.a2a;
+  if (a.effect_path === "custody" || a.effect_path === "attested" || a.effect_path === "none") ctx.effect_path = a.effect_path;
+  if (Object.keys(ctx).length) out.context = ctx;
   return out;
 };
 const stable = (v: unknown): string => JSON.stringify(v, (_k, x) => (x && typeof x === "object" && !Array.isArray(x) ? Object.fromEntries(Object.keys(x as object).sort().map((k) => [k, (x as Record<string, unknown>)[k]])) : x));
@@ -87,6 +92,28 @@ export class Guard {
     if (status !== "approved") throw new ApprovalRequired(d.approval_id, d.decision_id, status, d.reasons);
     const att = await this.client.attestations.issue(d.decision_id).catch(() => null);
     return { ...base, allowed: true, attestation: att?.token };
+  }
+  /**
+   * Access broker: perform one operation on a connection through Agent Trust instead of calling the provider with a
+   * credential of your own. Verified, granted once and executed by the broker; waits for a human approval like `check`.
+   */
+  async access(connection: string, operation: string, params: Record<string, string | number | boolean> = {}): Promise<{ grant: GrantRecord; decision: GrantDecision; result: GrantResult }> {
+    if (!this.client) throw new MnkiError("invalid_request", "guard.access needs a hosted client");
+    const input = { agent: this.o.agent, connection, operation, params };
+    let r: GrantExecution;
+    try { r = await this.client.grants.execute(input, { identity: this.o.identity }); }
+    catch (e) { if (e instanceof AgentTrustError) throw fromApi(e.status, e.code, e.detail); throw new MnkiError("network", e instanceof Error ? e.message : String(e)); }
+    const rec = (d: GrantDecision, enforced: boolean): GuardRecord => ({ at: new Date().toISOString(), mode: this.mode, tool: `${connection}/${operation}`, action: `access:${operation}`, resource: connection, decision: d.decision, enforced, reasons: d.reasons, evidence: d.evidence as Decision["evidence"], decision_id: d.decision_id, approval_id: d.approval_id, tags: tagsFor(d) });
+    if (r.status === "executed") { await this.o.onDecision?.(rec(r.decision, true)); return r; }
+    await this.o.onDecision?.(rec(r.decision, true));
+    if ((this.o.onApproval ?? "wait") === "throw") throw new ApprovalRequired(r.approval_id, r.decision.decision_id, "pending", r.decision.reasons);
+    const status = await this.client.waitForApproval(r.approval_id, this.o.approval);
+    if (status !== "approved") throw new ApprovalRequired(r.approval_id, r.decision.decision_id, status, r.decision.reasons);
+    let again: GrantExecution;
+    try { again = await this.client.grants.execute({ ...input, approval_id: r.approval_id }, { identity: this.o.identity }); }
+    catch (e) { if (e instanceof AgentTrustError) throw fromApi(e.status, e.code, e.detail); throw new MnkiError("network", e instanceof Error ? e.message : String(e)); }
+    if (again.status !== "executed") throw new ApprovalRequired(again.approval_id, again.decision.decision_id, "pending", again.decision.reasons);
+    return again;
   }
   /** Wrap a tool implementation: the call runs only after `check` resolves. */
   wrap<A extends unknown[], R>(tool: string, fn: (...args: A) => R | Promise<R>): (...args: A) => Promise<R> {

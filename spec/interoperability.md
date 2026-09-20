@@ -14,6 +14,7 @@ The profile adds the **semantic layer** — who the agent is, whom it represents
 | **NVIDIA AIP** | Interoperate | AIP covers agent identity, keys, registry and signed outbound actions. The profile's identity and proof objects are compatible in shape; delegation, attenuation, attestation, provenance and federation extend it rather than compete. |
 | **Microsoft Entra Agent ID, Okta, cloud IAM** | Federate, never compete | Identity providers issue the agent's credential; the profile is provider-neutral and consumes them as trust anchors. |
 | **CloudEvents 1.0 + JCS (RFC 8785)** | Reuse | The provenance envelope shape and its canonical hashing. |
+| **OAuth 2.0 Token Exchange (RFC 8693), AWS STS** | Build on (§17) | Where a provider can mint a short-lived, down-scoped credential, a grant is exchanged for one whose lifetime is bounded by the grant; where it cannot, the broker executes the operation itself (custody, §15). |
 
 What is deliberately **not** standardized here: new cryptography, new transports, agent messaging, discovery, marketplaces, payments, reputation scores.
 
@@ -57,3 +58,5 @@ the decision to accept, with the attestation `jti` in its context. Nothing cross
 short-lived objects and public keys. Federation trust levels (peer organisations whose attested agents may act
 *as if local*, level 2) build on the same attestation; the receiver above treats the caller as foreign and
 decides with its own authority model, which is the safe default between organisations that have not federated.
+From profile v0.2 (§12.1) both receivers ask A's public attestation status endpoint about the `jti` before the
+first acceptance, so a revocation at A lands at B within a minute instead of at expiry.
