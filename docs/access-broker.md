@@ -36,7 +36,93 @@ region are refused before verification.
 | Google | OAuth | `gmail.send`, `calendar.event.create`, `userinfo.get` (probe) |
 | Microsoft 365 | OAuth | `mail.send`, `calendar.event.create`, `me.get` (probe) |
 | AWS | IAM key pair | `sts.assume_role` (short-lived credentials, 15-minute minimum, recorded as `native_token`), `request` (SigV4-signed call to an allow-listed service) |
+| Kubernetes | ServiceAccount bearer token | `version.get` (probe), `namespace.list`, `pod.list`, `pod.get`, `pod.logs`, `deployment.get`, `deployment.restart`, `deployment.scale`, `pod.delete`, `namespace.delete`; namespace allow-list with trailing `*` |
+| Cloudflare | scoped API token | `zone.list` (probe), `zone.get`, `dns.list`, `dns.get`, `dns.create`, `dns.update`, `dns.delete`, `cache.purge`, `cache.purge_everything`; zone-id allow-list |
 | HTTP API | API key | Operations you declare per connection (id, method, path with `{param}` placeholders, parameter schema, risk); public https only, no IP literals, redirects refused |
+
+### Connecting a Kubernetes cluster
+
+1. **Check the API server is reachable with a publicly trusted certificate.** From your machine, without `-k`:
+
+   ```bash
+   curl -sS https://YOUR-API-SERVER/version
+   ```
+
+   A version document means the hosted control plane can reach it too. A certificate error means it cannot, and the
+   cluster needs the self-hosted control plane instead. Managed endpoints from EKS, GKE and AKS present a cluster CA
+   and will fail this check.
+
+2. **Create a ServiceAccount with only the verbs the operations need**, and a token for it:
+
+   ```yaml
+   apiVersion: v1
+   kind: ServiceAccount
+   metadata: { name: agent-trust, namespace: kube-system }
+   ---
+   apiVersion: rbac.authorization.k8s.io/v1
+   kind: ClusterRole
+   metadata: { name: agent-trust }
+   rules:
+     - apiGroups: [""]
+       resources: [namespaces, pods]
+       verbs: [get, list]
+     - apiGroups: [""]
+       resources: [pods/log]
+       verbs: [get]
+     - apiGroups: [""]
+       resources: [pods]
+       verbs: [delete]
+     - apiGroups: [""]
+       resources: [namespaces]
+       verbs: [delete]
+     - apiGroups: [apps]
+       resources: [deployments, deployments/scale]
+       verbs: [get, patch]
+   ---
+   apiVersion: rbac.authorization.k8s.io/v1
+   kind: ClusterRoleBinding
+   metadata: { name: agent-trust }
+   roleRef: { apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: agent-trust }
+   subjects: [{ kind: ServiceAccount, name: agent-trust, namespace: kube-system }]
+   ---
+   apiVersion: v1
+   kind: Secret
+   metadata:
+     name: agent-trust-token
+     namespace: kube-system
+     annotations: { kubernetes.io/service-account.name: agent-trust }
+   type: kubernetes.io/service-account-token
+   ```
+
+   ```bash
+   kubectl apply -f agent-trust-rbac.yaml
+   kubectl -n kube-system get secret agent-trust-token -o jsonpath='{.data.token}' | base64 -d
+   ```
+
+   Drop the rules you do not want: leaving out `delete` on namespaces means no policy is ever the only thing standing
+   between an agent and a deleted namespace. Narrow it further by replacing the ClusterRole with a Role in one
+   namespace, at the cost of `namespace.list`.
+
+   `kubectl create token agent-trust --duration=24h` issues a short-lived token instead, if you would rather rotate
+   the connection's credential daily than hold a non-expiring one.
+
+3. **Connect it.** Console → Access → Connect a system → Kubernetes. The API server URL is the base URL, the token is
+   the credential, and the allowed namespaces accept a trailing `*`:
+
+   ```text
+   Base URL:            https://YOUR-API-SERVER
+   Allowed namespaces:  staging-*, demo
+   ```
+
+   Enable the operations you want. **Test connection** calls `/version`, which needs no RBAC at all, so a green test
+   proves the token reaches the cluster but not that the role is right — `pod.list` is the first real check.
+
+Kubernetes deliberately offers no way to read a Secret, create a Pod or Job, or exec into a container: each hands an
+agent arbitrary execution or the very credentials the broker exists to keep away from it. The API server must be
+reachable over the public internet with a **publicly trusted certificate**, because the hosted control plane validates
+TLS against the public root store and will not be told otherwise. A cluster whose endpoint is private, or whose
+certificate is signed by the cluster's own CA, is reachable from the self-hosted control plane instead, where the
+runtime trusts the CA you give it.
 
 `POST /v1/connections/{id}/test` runs the provider's read probe with the stored credential and marks the connection
 `active` or `needs_reconnect`. Disconnecting destroys the credential, disables the connection and revokes every
@@ -88,7 +174,7 @@ ledger. Responses:
 | --- | --- | --- |
 | 200 | `{ grant, decision, result }` | Done. `result.body` is projected to the fields an agent needs and redacted of anything secret-shaped; the grant keeps its hash. |
 | 202 | `{ decision, approval_id, poll_url, resume }` | A person must approve. Poll `poll_url`, then resend with `approval_id`; the approval executes exactly once and only for the same parameters. |
-| 403 | `{ error: "denied", decision, access_request_hint? }` | Denied with reasons and the failing evidence. `capability_missing` comes with a hint to ask for access. |
+| 403 | `{ error: "denied", decision, access_request_hint?, agent_hint? }` | Denied with reasons and the failing evidence. `capability_missing` comes with a hint to ask for access. A refusal caused by the agent's own lifecycle (`agent_pending`, `agent_suspended`, `agent_revoked`, `agent_retired`) comes with `agent_hint`: what a person has to do about the identity, and the console URL where they do it. Asking again in a different shape will not help until they do. |
 | 409 | `approval_already_used`, `grant_already_executed`, `approval_mismatch`, `permit_already_used` | Replays and bent approvals. |
 | 402 | `plan_feature_required`, `plan_limit_reached` | Plan or verification quota. |
 | 502 | `{ grant: { status: "failed" }, result: { error } }` | The upstream call failed (timeout, redirect, oversized body, provider error); nothing is retried without a new grant. |
@@ -144,3 +230,9 @@ Every plan includes connections (Free 1, Individual 3, Team 25, Enterprise unlim
 and signing); above the included count you buy connections one at a time as an add-on, next to SSO. Kill switch
 `broker` in the admin portal stops every grant platform-wide; `/api/health` reports `access_broker: ready` when
 `TOOL_ENC_KEY` is set.
+
+## Agents built here
+
+An agent built inside Agent Trust reaches every one of these operations through this same broker: it holds a
+delegation over `provider:operation`, each call is verified, and the credential stays where it is. Nothing in this
+document changes for it. See [Building agents](/docs/building-agents).

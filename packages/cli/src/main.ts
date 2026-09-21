@@ -12,6 +12,8 @@
  *   mnki passport publish|unpublish <agent-id>   (admin key; the organisation's opt-in in Settings → Security decides whether it is served)
  *   mnki delegate --issuer principal:<id>|agent:<id> --to <agent> --cap "purchase.create=supplier:*;max_value=5000" [--parent <id>] [--expires 24h]
  *   mnki attest <decision_id>
+ *   mnki agent templates · mnki agent create --template operations-agent --name ops [--bind cloudflare=con_… --set primary_zone=023e…]
+ *   mnki agent config <agent> · mnki agent deploy <agent> --reason "…" · mnki agent run <agent> "purge the cache" [--live] [--json]
  *   mnki access list · mnki access ops <connection> · mnki access run --agent <id> --connection <con_…> --op refund.create --param charge=ch_1 --param amount=42000 [--wait]
  *   mnki access request --agent <id> --connection <con_…> --op customer.get [--for 24h] --reason "…" · mnki access status <request id>
  *   mnki revoke agent|credential|delegation|api_key|policy_version <id> --reason "…"   (admin key; immediate)
@@ -149,6 +151,80 @@ When you want a real console: mnki init --url https://mnki.com --key at_…`); r
         const c = need(); const id = rest[0]; if (!id) throw new Error("usage: mnki attest <decision id> [--ttl 600]");
         const r = await client(c).attestations.issue(id, { ttlSeconds: rest.includes("--ttl") ? Number(rest[rest.indexOf("--ttl") + 1]) : undefined });
         console.log(`Attestation ${r.id} (expires ${r.expires_at})\n${r.token}`); return;
+      }
+      case "agent": {
+        const c = need(); const sub = rest[0]; const cl = client(c);
+        const flag = (name: string): string | undefined => { const i = rest.indexOf(`--${name}`); return i === -1 ? undefined : rest[i + 1]; };
+        const pairs = (name: string): Record<string, string> => Object.fromEntries(rest.map((v, i) => (v === `--${name}` ? rest[i + 1] : null)).filter((v): v is string => !!v).map((v) => { const at = v.indexOf("="); return [v.slice(0, at), v.slice(at + 1)]; }));
+
+        if (sub === "templates") {
+          const r = await cl.templates.list();
+          if (rest.includes("--json")) return out(r);
+          for (const t of r.items) {
+            console.log(`${t.slug}  ${t.name} — ${t.tagline}`);
+            console.log(`  can: ${t.trust.can.join(", ") || "—"}`);
+            if (t.trust.canWithApproval.length) console.log(`  asks: ${t.trust.canWithApproval.join(", ")}`);
+            if (t.trust.cannot.length) console.log(`  cannot: ${t.trust.cannot.join(", ")}`);
+            if (t.slots.length) console.log(`  needs: ${t.slots.map((x) => `${x.slot}=<${x.provider} connection>`).join(" ")}`);
+          }
+          return;
+        }
+
+        if (sub === "create") {
+          const slug = flag("template") ?? "operations-agent";
+          const name = flag("name") ?? slug;
+          const bind = pairs("bind"); const set = pairs("set");
+          const bindings = Object.entries(bind).map(([slot, connection_id]) => ({ slot, connection_id, provider: "" }));
+          const r = await cl.builder.create({ name, template: { slug, bindings, config: set } });
+          track("agent_create", { template: slug });
+          if (rest.includes("--json")) return out(r);
+          console.log(`Created ${r.agent_id} from ${slug}. Deploy it with:  mnki agent deploy ${r.agent_id} --reason "first deployment"`);
+          return;
+        }
+
+        const agentId = rest[1];
+        if (!agentId) throw new Error(`usage: mnki agent ${sub ?? "<command>"} <agent id>`);
+
+        if (sub === "config") { const r = await cl.builder.config(agentId); if (rest.includes("--json")) return out(r);
+          console.log(`version ${r.build.version ?? "-"}${r.build.deployed_version ? ` (deployed ${r.build.deployed_version})` : " (not deployed)"}`);
+          for (const b of r.compiled?.manifest ?? []) console.log(`  ${b.delegated ? "✓" : "✕"} ${b.action}  ${b.effect}`);
+          return; }
+
+        if (sub === "deploy") {
+          const reason = flag("reason");
+          if (!reason) throw new Error('usage: mnki agent deploy <agent> --reason "why"');
+          const r = await cl.builder.deploy(agentId, reason);
+          track("agent_deploy", {});
+          return rest.includes("--json") ? out(r) : console.log(`Deployed version ${r.version}. Delegation ${r.delegation_id}, policy version ${r.policy_version_id}.`);
+        }
+
+        if (sub === "run" || sub === "test") {
+          const text = rest.slice(2).filter((x) => !x.startsWith("--")).join(" ");
+          if (!text) throw new Error('usage: mnki agent run <agent> "what to do" [--live]');
+          const live = rest.includes("--live");
+          const started = await cl.runs.start(agentId, text, { mode: live ? "live" : "test", liveTools: live });
+          track("agent_run", { mode: live ? "live" : "test" });
+          if (!live) console.log("Test mode: every check runs, nothing reaches a connected system.");
+          const steps = [];
+          const it = cl.runs.watch(started.run.id);
+          let step = await it.next();
+          while (!step.done) {
+            steps.push(step.value);
+            const p = step.value.payload as Record<string, unknown>;
+            if (step.value.kind === "assistant.message") console.log(String(p.text ?? ""));
+            else if (step.value.kind === "tool.called") console.log(`  → ${String(p.action ?? p.name)}`);
+            else if (step.value.kind === "tool.result") console.log(`    ${p.ok ? "✓" : "✕"} ${String(p.action ?? p.name)}${p.test_mode ? " (test mode, not performed)" : ""}`);
+            else if (step.value.kind === "tool.denied") console.log(`    ✕ ${String(p.action ?? p.name)} refused${Array.isArray(p.rule_ids) && p.rule_ids.length ? ` by rule ${(p.rule_ids as string[]).join(", ")}` : ""}`);
+            else if (step.value.kind === "tool.approval_requested") console.log(`    ⚠ ${String(p.action ?? p.name)} needs a person: approve it in the console, this will continue`);
+            step = await it.next();
+          }
+          const run = step.value;
+          if (rest.includes("--json")) return out({ run, steps });
+          console.log(`\n${run.status}${run.error_code ? ` (${run.error_code})` : ""} · ${run.turn} turns, ${run.tool_calls} tool calls`);
+          return;
+        }
+
+        throw new Error("usage: mnki agent templates|create|config|deploy|run");
       }
       case "access": {
         const c = need(); const sub = rest[0]; const cl = client(c);

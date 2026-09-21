@@ -37,7 +37,37 @@ conexión diga lo que diga la delegación del agente: un tope de importe aparece
 | Google | OAuth | `gmail.send`, `calendar.event.create`, `userinfo.get` (sonda) |
 | Microsoft 365 | OAuth | `mail.send`, `calendar.event.create`, `me.get` (sonda) |
 | AWS | Par de claves IAM | `sts.assume_role` (credenciales de corta duración, mínimo 15 minutos, registradas como `native_token`), `request` (llamada firmada SigV4 a un servicio permitido) |
+| Kubernetes | Token de ServiceAccount | `version.get` (sonda), `namespace.list`, `pod.list`, `pod.get`, `pod.logs`, `deployment.get`, `deployment.restart`, `deployment.scale`, `pod.delete`, `namespace.delete`; lista de espacios de nombres permitidos con `*` final |
+| Cloudflare | Token de API acotado | `zone.list` (sonda), `zone.get`, `dns.list`, `dns.get`, `dns.create`, `dns.update`, `dns.delete`, `cache.purge`, `cache.purge_everything`; lista de zonas permitidas |
 | API HTTP | Clave de API | Operaciones que usted declara por conexión (id, método, ruta con marcadores `{param}`, esquema de parámetros, riesgo); solo https público, sin direcciones IP, redirecciones rechazadas |
+
+### Conectar un clúster de Kubernetes
+
+1. **Compruebe que el API server es accesible con un certificado de confianza pública.** Desde su equipo, sin `-k`:
+
+   ```bash
+   curl -sS https://SU-API-SERVER/version
+   ```
+
+   Si devuelve la versión, el plano de control alojado también llega. Un error de certificado significa que no, y ese
+   clúster necesita el plano de control autoalojado. Los endpoints gestionados de EKS, GKE y AKS presentan la CA del
+   clúster y no pasan esta comprobación.
+
+2. **Cree un ServiceAccount con solo los verbos que necesitan las operaciones** y un token para él (mismo manifiesto
+   que en la versión en inglés de esta página: ServiceAccount, ClusterRole, ClusterRoleBinding y un Secret de tipo
+   `kubernetes.io/service-account-token`). Quite las reglas que no quiera: no conceder `delete` sobre namespaces
+   significa que ninguna política es lo único que separa a un agente de un espacio de nombres borrado.
+
+3. **Conéctelo.** Consola → Acceso → Conectar un sistema → Kubernetes. La URL del API server es la URL base, el token
+   es la credencial y los espacios de nombres permitidos aceptan un `*` final. **Probar conexión** llama a `/version`,
+   que no requiere RBAC: una prueba correcta demuestra que el token llega al clúster, no que el rol sea el adecuado.
+
+Kubernetes no ofrece deliberadamente ninguna forma de leer un Secret, crear un Pod o un Job, ni de ejecutar un
+intérprete dentro de un contenedor: cada una entrega al agente ejecución arbitraria o las credenciales que el bróker
+existe para mantener fuera de su alcance. El API server debe ser accesible por internet con un **certificado de
+confianza pública**, porque el plano de control alojado valida TLS contra el almacén raíz público. Un clúster con
+endpoint privado, o con un certificado firmado por la CA del propio clúster, se alcanza desde el plano de control
+autoalojado, donde el entorno confía en la CA que usted le indique.
 
 `POST /v1/connections/{id}/test` ejecuta la sonda de lectura del proveedor con la credencial guardada y marca la
 conexión como `active` o `needs_reconnect`. Desconectar destruye la credencial, desactiva la conexión y revoca toda
@@ -89,7 +119,7 @@ idempotencia cuando el proveedor la admite → concesión marcada `executed` o `
 | --- | --- | --- |
 | 200 | `{ grant, decision, result }` | Hecho. `result.body` se proyecta a los campos que necesita un agente y se le quita todo lo que parezca un secreto; la concesión guarda su hash. |
 | 202 | `{ decision, approval_id, poll_url, resume }` | Una persona debe aprobar. Consulte `poll_url` y reenvíe con `approval_id`; la aprobación se ejecuta exactamente una vez y solo con los mismos parámetros. |
-| 403 | `{ error: "denied", decision, access_request_hint? }` | Denegado con motivos y la evidencia fallida. `capability_missing` incluye una pista para pedir acceso. |
+| 403 | `{ error: "denied", decision, access_request_hint?, agent_hint? }` | Denegado con motivos y la evidencia fallida. `capability_missing` incluye una pista para pedir acceso. Una negativa causada por el ciclo de vida del propio agente (`agent_pending`, `agent_suspended`, `agent_revoked`, `agent_retired`) incluye `agent_hint`: qué tiene que hacer una persona con la identidad y la URL de la consola donde hacerlo. Volver a pedir de otra forma no servirá hasta entonces. |
 | 409 | `approval_already_used`, `grant_already_executed`, `approval_mismatch`, `permit_already_used` | Repeticiones y aprobaciones alteradas. |
 | 402 | `plan_feature_required`, `plan_limit_reached` | Plan o cuota de verificaciones. |
 | 502 | `{ grant: { status: "failed" }, result: { error } }` | La llamada al destino falló (tiempo de espera, redirección, cuerpo demasiado grande, error del proveedor); nada se reintenta sin una concesión nueva. |

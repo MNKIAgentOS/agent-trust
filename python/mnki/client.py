@@ -59,6 +59,59 @@ class AgentTrustClient:
     def attest(self, agent_id: str, kind: str, claims: dict, proof: Optional[dict] = None, expires_at: Optional[str] = None) -> dict:
         return self._call("POST", f"/v1/agents/{agent_id}/attestations", {"kind": kind, "claims": claims, "proof": proof, "expires_at": expires_at})
     def agent_card(self, agent_id: str) -> dict: return self._call("GET", f"/v1/agents/{agent_id}/agent-card")
+    # --- agents built inside Agent Trust ---
+    def templates(self) -> dict:
+        """Templates an agent can be built from, each with the trust profile a person reads first."""
+        return self._call("GET", "/v1/templates")
+
+    def agent_config(self, agent_id: str) -> dict:
+        """The configuration, the tools it can reach, and the compiled preview of what deploying would write."""
+        return self._call("GET", f"/v1/agents/{agent_id}/config")
+
+    def configure_agent(self, agent_id: str, config: dict, note: Optional[str] = None) -> dict:
+        """Save a new version. Identical content is refused, exactly as a policy version is."""
+        return self._call("PUT", f"/v1/agents/{agent_id}/config", {"config": config, "note": note})
+
+    def deploy_agent(self, agent_id: str, reason: str) -> dict:
+        """Issue the delegation and activate the policy. The reason goes in the ledger."""
+        return self._call("POST", f"/v1/agents/{agent_id}/deploy", {"reason": reason})
+
+    def start_run(self, agent_id: str, text: str, mode: str = "test", live_tools: Optional[bool] = None) -> dict:
+        """Start a run. In live mode its allowed actions reach connected systems."""
+        return self._call("POST", f"/v1/agents/{agent_id}/runs", {"input": text, "mode": mode, "live_tools": live_tools if live_tools is not None else mode == "live"})
+
+    def runs(self, agent_id: str, limit: int = 25) -> dict: return self._call("GET", f"/v1/agents/{agent_id}/runs?limit={limit}")
+    def run(self, run_id: str, after: int = 0) -> dict: return self._call("GET", f"/v1/runs/{run_id}?after={after}")
+    def run_steps(self, run_id: str, after: int = 0) -> dict: return self._call("GET", f"/v1/runs/{run_id}/steps?after={after}")
+    def send_run_message(self, run_id: str, text: str) -> dict: return self._call("POST", f"/v1/runs/{run_id}/messages", {"input": text})
+    def cancel_run(self, run_id: str) -> dict: return self._call("POST", f"/v1/runs/{run_id}/cancel")
+
+    def stream_run(self, run_id: str, interval: float = 1.5, timeout: float = 900.0, sleep=None):
+        """
+        Yield every step of a run as it happens. A run waiting for a person keeps waiting, so an approval given
+        elsewhere simply continues the stream. Returns nothing; read the final state with `run(run_id)`.
+        """
+        import time as _time
+        nap = sleep or _time.sleep
+        deadline = _time.time() + timeout
+        after = 0
+        while True:
+            page = self.run(run_id, after)
+            for step in page.get("steps", []):
+                after = step["seq"]
+                yield step
+            status = page.get("run", {}).get("status")
+            if status in ("completed", "failed", "cancelled", "out_of_credits") or _time.time() >= deadline:
+                return
+            nap(interval)
+
+    def wait_for_run(self, agent_id: str, text: str, mode: str = "test", live_tools: Optional[bool] = None, timeout: float = 900.0) -> dict:
+        """Start a run, follow it to the end, and return the run with its trace."""
+        started = self.start_run(agent_id, text, mode, live_tools)
+        run_id = started["run"]["id"]
+        steps = list(self.stream_run(run_id, timeout=timeout))
+        return {"run": self.run(run_id)["run"], "steps": steps}
+
     # --- authority ---
     def delegate(self, issuer: dict, subject_agent_id: str, capabilities: list, parent_id: Optional[str] = None, task: Optional[str] = None, not_after: Optional[str] = None) -> dict:
         return self._call("POST", "/v1/delegations", {"issuer": issuer, "subjectAgentId": subject_agent_id, "capabilities": capabilities, "parentId": parent_id, "task": task, "notAfter": not_after})

@@ -57,7 +57,9 @@ pruebas de integración; las ejecuciones reales contra cada proveedor se anotan 
 | Slack | app OAuth | `chat.postMessage`, `conversations.list`, `auth.test` (sonda); los sobres `ok:false` hacen fallar la concesión | Verificado (API simulada) |
 | Google | app OAuth | envío de Gmail, creación de eventos de Calendar, userinfo (sonda) | Verificado (API simulada) |
 | Microsoft 365 | app OAuth | envío de correo, creación de eventos de calendario, `me` (sonda) | Verificado (API simulada) |
-| AWS | par de claves IAM | STS AssumeRole (credencial nativa de corta duración), petición firmada SigV4 a servicios permitidos | Verificado (vectores de firma + STS simulado) |
+| AWS | par de claves IAM | STS AssumeRole (credencial nativa de corta duración), petición firmada SigV4 a servicios permitidos | Verificado en real, 20 sep 2026 |
+| Kubernetes | Token de ServiceAccount | leer pods y espacios de nombres, logs, reiniciar y escalar deployments, borrar un pod o un espacio de nombres; lista de permitidos | Verificado (API server simulado) |
+| Cloudflare | Token de API acotado | zonas, registros DNS, purga de caché por URL o completa; lista de zonas permitidas | Verificado en real, 20 sep 2026 |
 | Cualquier API HTTP | clave de API en una cabecera | operaciones declaradas por conexión; solo https público | Verificado |
 
 ## Identidad y estándares

@@ -17,6 +17,10 @@ import { ApprovalRequired, Denied, MnkiError } from "../errors";
 import type { GuardLike } from "./shared";
 import type { GuardResult } from "../guard";
 
+/** See the note on `defaultFetch` in the package entry: a bare `fetch` stored on an object and called as a
+ *  method throws "Illegal invocation" in a Worker. Kept local to avoid importing the entry point from an adapter. */
+const defaultFetch: typeof fetch = (input, init) => fetch(input, init);
+
 export const AGENT_TRUST_EXTENSION = "https://mnki.com/agent-trust/profile/v0.1";
 
 export interface AgentTrustCardParams { agent_id?: string; stable_id?: string; public_id?: string; lifecycle?: string; risk_tier?: string; state?: string; principal?: { id: string; name: string } | null; organization?: string; organization_name?: string; jwks_url?: string; verify_url?: string; status_url?: string; /** v0.2 §12.1: base of the caller organisation's public attestation status endpoint. */ attestation_status_url?: string; passport_url?: string; badge_url?: string; attestations_url?: string; delegation_credential_url?: string | null; authority?: { valid: boolean; chain_length: number } }
@@ -39,7 +43,7 @@ export async function signTaskRequest(identity: AgentIdentity, o: { url: string;
 }
 /** `signTaskRequest` then `fetch`. */
 export async function sendTask(identity: AgentIdentity, o: Parameters<typeof signTaskRequest>[1] & { fetch?: typeof fetch }): Promise<Response> {
-  const r = await signTaskRequest(identity, o); return (o.fetch ?? fetch)(r.url, { method: r.method, headers: r.headers, body: r.body });
+  const r = await signTaskRequest(identity, o); return (o.fetch ?? defaultFetch)(r.url, { method: r.method, headers: r.headers, body: r.body });
 }
 
 // ---- server side ------------------------------------------------------------------------------------------------
@@ -82,7 +86,7 @@ const defaultConsumed = memoryConsumedStore();
 const header = (h: IncomingTask["headers"], name: string): string | null => (h instanceof Headers ? h.get(name) : (Object.entries(h).find(([k]) => k.toLowerCase() === name)?.[1] ?? null));
 
 export async function verifyBeforeAccept(guard: GuardLike, task: IncomingTask, o: VerifyBeforeAcceptOptions = {}): Promise<VerifyBeforeAcceptResult> {
-  const f = o.fetch ?? fetch; const now = o.now?.() ?? new Date(); const cache = o.jwksCache ?? new Map();
+  const f = o.fetch ?? defaultFetch; const now = o.now?.() ?? new Date(); const cache = o.jwksCache ?? new Map();
   const trust: TrustMetadata = { caller: { agent_id: null, stable_id: null, organization: null, public_id: null, card_url: null }, proof: { present: !!header(task.headers, "agent-proof"), note: "Agent-Proof is verified by the caller's control plane on /v1/verify; a receiving server sees presence only." }, attestation: { present: !!header(task.headers, "agent-attestation"), valid: false }, standing: { checked: false } };
   // 1. the caller's card
   const cardRef = task.callerCard ?? header(task.headers, "agent-card");

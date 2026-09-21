@@ -85,6 +85,20 @@ const r = await client.grants.run({ agent: "invoice-agent", connection: "con_…
 Denied for a missing capability? `mnki access request --agent invoice-agent --connection con_… --op customer.get --for 1h --reason "…"`
 asks a person, who approves for an hour from the console. Full guide: [Access broker](/docs/access-broker).
 
+### Or build the agent here
+
+You do not have to bring an agent. Console → **Agents** → **Templates** starts from one that has been thought
+through: pick its systems, decide what it may do on its own, test it with every check visible and nothing reaching
+a real system, then deploy. It becomes an ordinary agent with an ordinary delegation. Full guide:
+[Building agents](/docs/building-agents).
+
+```bash
+mnki agent templates
+mnki agent create --template operations-agent --name ops --bind cloudflare=con_…
+mnki agent deploy agt_… --reason "first deployment"
+mnki agent run agt_… "purge the cache for /pricing"     # test mode: verified, nothing performed
+```
+
 ## 4. Your framework
 
 Adapters are subpaths of the same packages; the framework itself is never imported by mnki.

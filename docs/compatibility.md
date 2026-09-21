@@ -57,7 +57,9 @@ each provider are recorded here as they are done.
 | Slack | OAuth app | `chat.postMessage`, `conversations.list`, `auth.test` (probe); `ok:false` envelopes fail the grant | Verified (fake API) |
 | Google | OAuth app | Gmail send, Calendar event create, userinfo (probe) | Verified (fake API) |
 | Microsoft 365 | OAuth app | Mail send, Calendar event create, `me` (probe) | Verified (fake API) |
-| AWS | IAM access key pair | STS AssumeRole (native short-lived credential), SigV4-signed request to allow-listed services | Verified (signature vectors + fake STS) |
+| AWS | IAM access key pair | STS AssumeRole (native short-lived credential), SigV4-signed request to allow-listed services | Verified live, 20 Sep 2026 |
+| Kubernetes | ServiceAccount bearer token | read pods and namespaces, logs, restart and scale deployments, delete a pod or namespace; namespace allow-list | Verified (fake API server) |
+| Cloudflare | scoped API token | zones, DNS records, cache purge by URL or everything; zone-id allow-list; success read from the response envelope | Verified live, 20 Sep 2026 |
 | Any HTTP API | API key in a header | operations declared per connection; public https only | Verified |
 
 ## Identity and standards

@@ -30,4 +30,7 @@ jobs:
         with: { node-version: 22 }
       - run: npm install --no-audit --no-fund
       - run: npm install --no-save --no-audit --no-fund "@openai/agents@0.1" "@langchain/core@0.3" "ai@5" "@anthropic-ai/claude-agent-sdk@0.1"
+      # The SDK imports the verifier by its package name, which resolves through `main` to dist. Without this the
+      # job fails on "Failed to resolve entry for package mnki-verifier" and says nothing about any adapter.
+      - run: npm run build -w packages/verifier
       - run: npx vitest run packages/sdk-ts/tests/adapters.test.ts
